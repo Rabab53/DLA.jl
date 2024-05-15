@@ -1,0 +1,13 @@
+name = "DLA"
+uuid = "d37ed344-79c4-486d-9307-6d11355a15a3"
+authors = ["Rabab Alomairy"]
+version = "1.0.0-DEV"
+
+[compat]
+julia = "1.10"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
