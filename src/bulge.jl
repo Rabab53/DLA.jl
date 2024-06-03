@@ -1,10 +1,4 @@
-module Bulge
-
 using Base: cld
-
-export coreblas_ceildiv
-export findVTpos
-export findVTsiz
 
 @inline function coreblas_ceildiv(a::Int, b::Int)::Int
     return cld(a, b)
@@ -69,6 +63,4 @@ end
 
     blkcnt[] = blkcnt[] +1;
     LDV[] = NB+Vblksiz-1;
-end
-
 end

@@ -1,19 +1,4 @@
-module CoreBlasTypes
-
 #include <complex.h>
-
-export COREBLAS_TYPE
-export COREBLAS_OPT
-export COREBLAS_ERRORS
-export COREBLAS_ERRORS
-export COREBLAS_PLACE
-export COREBLAS_HOUSEHOLDER
-export COREBLAS_ENABLE
-export COREBLAS_OPTION
-
-export coreblas_enum_t
-export coreblas_complex32_t
-export coreblas_complex64_t
 
 @enum COREBLAS_TYPE begin
     CoreBlasByte          = 0
@@ -125,5 +110,3 @@ function coreblas_side_const(lapack_char::Char)::coreblas_enum_t end
 function coreblas_storev_const(lapack_char::Char)::coreblas_enum_t end
 function coreblas_trans_const(lapack_char::Char)::coreblas_enum_t end
 function coreblas_uplo_const(lapack_char::Char)::coreblas_enum_t end
-
-end
