@@ -98,7 +98,8 @@ end
 
 const coreblas_enum_t = Int
 const coreblas_complex32_t = ComplexF32
-const coreblas_complex64_t = ComplexF64
+# const coreblas_complex64_t = ComplexF64
+const coreblas_complex64_t = Float64
 
 function coreblas_eigt_const(lapack_char::Char)::coreblas_enum_t end
 function coreblas_job_const(lapack_char::Char)::coreblas_enum_t end

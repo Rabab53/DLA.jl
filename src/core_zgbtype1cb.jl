@@ -26,27 +26,41 @@
 # will deal with it later after ensuring correctness, since this mirrors the original more closely
 
 macro AL(m_, n_)
-    return Ref(A, nb + lda * ($n_) + (($m_)-($n_)) +1)
+    return esc(:(Ref(A[], nb + lda * ($n_) + (($m_)-($n_)) +1)))
 end
 
 macro AU(m_, n_)
-    return Ref(A, nb + lda * ($n_) + (($m_)-($n_)+nb) +1)
+    quote
+        Ref(A[], nb + lda * $(esc(n_)) + ($(esc(m_))-$(esc(n_))+nb) +1)
+    end
 end
 
 macro VQ(m)
-    return Ref(VQ, ($m) +1)
+    # quote
+    #     Ref(VQ[], $(esc(m)) +1)
+    # end
+    return esc(:(Ref(VQ[], ($m) +1)))
 end
 
 macro VP(m)
-    return Ref(VP,($m) +1)
+    # quote 
+    #     Ref(VP[], $(esc(m)) +1)
+    # end
+    return esc(:(Ref(VP[], ($m) +1)))
 end
 
 macro TAUQ(m)
-    return Ref(TAUQ, ($m) +1)
+    # quote 
+    #     Ref(TAUQ[], $(esc(m)) +1)
+    # end
+    return esc(:(Ref(TAUQ[], ($m) +1)))
 end
 
 macro TAUP(m)
-    return Ref(TAUP, ($m) +1)
+    # quote
+    #     Ref(TAUP[], $(esc(m)) +1)
+    # end
+    return esc(:(Ref(TAUP[], ($m) +1)))
 end 
 
 
@@ -54,22 +68,22 @@ function coreblas_zgbtype1cb!(
     uplo::coreblas_enum_t, 
     n::Int, 
     nb::Int,
-    A::Ref{coreblas_complex64_t}, 
+    A::Base.RefValue{Matrix{coreblas_complex64_t}}, 
     lda::Int,
-    VQ::Ref{coreblas_complex64_t}, 
-    TAUQ::Ref{coreblas_complex64_t},
-    VP::Ref{coreblas_complex64_t}, 
-    TAUP::Ref{coreblas_complex64_t},
+    VQ::Base.RefValue{Vector{coreblas_complex64_t}}, 
+    TAUQ::Base.RefValue{Vector{coreblas_complex64_t}},
+    VP::Base.RefValue{Vector{coreblas_complex64_t}}, 
+    TAUP::Base.RefValue{Vector{coreblas_complex64_t}},
     st::Int,
     ed::Int,
     sweep::Int,
     Vblksiz::Int,
     wantz::Int,
-    WORK::Int)
+    WORK::Base.RefValue{Vector{coreblas_complex64_t}})
 
-    ctmp::coreblas_complex64_t
-    i, len, LDX, lenj::Int
-    blkid, vpos, taupos, tpos::Int
+    ctmp::coreblas_complex64_t = 0
+    i, len, LDX, lenj ::Int = 0, 0, 0, 0
+    blkid, vpos, taupos, tpos ::Int = 0, 0, 0, 0
 
     # /* find the pointer to the Vs and Ts as stored by the bulgechasing
     # * note that in case no eigenvector required V and T are stored
@@ -92,16 +106,16 @@ function coreblas_zgbtype1cb!(
         #  * ========================*/
         # // Eliminate the row  at st-1 
         
-        @VP(vpos) = 1.;
+        @VP(vpos)[] = 1.;
         for i in 1:(n-1)
             @VP(vpos+i)[] = conj(@AU(st-1, st+i))[];
             @AU(st-1, st+i)[] = 0.;
         end
-        ctmp = conj(@AU(st-1, st))[];
+        ctmp = conj(@AU(st-1, st)[]);
         
         # TODO: zlarfg ????
-        # LAPACK.larfg!(len, Ref(ctmp), @VP(vpos+1), 1, @TAUP(taupos));
-        @AU(st-1, st) = ctmp;
+        LAPACK.larfg!(@VP(vpos+1));
+        @AU(st-1, st)[] = ctmp;
         # // Apply right on A(st:ed,st:ed) 
         ctmp = @TAUP(taupos)[];
             
@@ -153,6 +167,7 @@ function coreblas_zgbtype1cb!(
         @VP(vpos)[] = 1.;
 
         for i in 1:(len-1)
+            @show vpos
             @VP(vpos+i)[] = conj(@AL(st, st+i)[]);
             @AL(st, st+i)[] = 0.;
         end
