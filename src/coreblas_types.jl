@@ -1,5 +1,3 @@
-#include <complex.h>
-
 @enum COREBLAS_TYPE begin
     CoreBlasByte          = 0
     CoreBlasInteger       = 1

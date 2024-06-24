@@ -16,7 +16,7 @@ function ref_coreblas_zgbtype1cb!(
     uplo = 121
     nb = nb
     st=0
-    ed=3 # 4
+    ed=2 # 4
     sweep=1
     Vblksiz=1
     wantz=0
@@ -44,14 +44,14 @@ function test_coreblas_zgbtype1cb!(
     m1, n1 = size(A)
     nq = size(VQ)
     np = size(VP)
-    uplo = 121
+    uplo = CoreBlasUpper
     nb = nb
     st=0
-    ed=3 # 4
+    ed=2 # 4
     sweep=1
     Vblksiz=1
     wantz=0
     work = Vector{T}(undef, nb)
 
-    coreblas_zgbtype1cb!(uplo, n, nb, Ref(A), m1, Ref(VQ), Ref(TAUQ), Ref(VP), Ref(TAUP), st, ed, sweep, Vblksiz, wantz, Ref(work))
+    coreblas_zgbtype1cb!(uplo, n, nb, A, m1, VQ, TAUQ, VP, TAUP, st, ed, sweep, Vblksiz, wantz, work)
 end
