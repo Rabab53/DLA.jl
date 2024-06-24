@@ -1,3 +1,6 @@
+using LinearAlgebra: libblastrampoline, BlasFloat, BlasInt, LAPACKException, DimensionMismatch,
+    SingularException, PosDefException, chkstride1, checksquare, triu, tril, dot
+
 function coreblas_zgbtype1cb!(
     uplo, 
     n, 
@@ -16,8 +19,9 @@ function coreblas_zgbtype1cb!(
     WORK::Vector)
 
     # lda = size(A, 1)
+    # lda = max(1, stride(A,2))
 
-    ctmp = 0
+    ctmp = Ref{Float64}()
     i, len, LDX, lenj = 0, 0, 0, 0
     blkid, vpos, taupos, tpos = 0, 0, 0, 0
 
@@ -44,40 +48,57 @@ function coreblas_zgbtype1cb!(
         #  *       UPPER CASE
         #  * ========================*/
         # // Eliminate the row  at st-1 
+
         
         VP[vpos] = 1.
         for i in 1:len-1
-            VP[vpos+i] = conj(A[2*nb-i+1, st+i+1]);
-            A[2*nb-i+1, st+i+1] = 0.;
+            VP[vpos+i] = conj(A[2*nb-i, st+1+i]);
+            A[2*nb-i, st+1+i] = 0.;
         end
-        ctmp = conj(A[2*nb+1, st+1])
+        ctmp[] = conj(A[2*nb, st+1])
         
         # LAPACKE_zlarfg(len, &ctmp, VP(vpos+1), 1, TAUP(taupos) );
-        TAUP[taupos] = LAPACK.larfg!(@view(VP[vpos+1:vpos+len-1]));
-        A[2*nb, st+1] = ctmp;
+        ccall((:dlarfg_64_, libblastrampoline), Cvoid,
+                (Ref{BlasInt}, Ref{Float64}, Ptr{Float64}, Ref{Int}, Ref{Float64}),
+                len, ctmp, pointer(VP, vpos+1), BlasInt(1), Ref(TAUP, taupos))
+
+        A[2*nb, st+1] = ctmp[];
         # // Apply right on A(st:ed,st:ed) 
-        ctmp = TAUP[taupos];
+        ctmp[] = TAUP[taupos];
             
         # LAPACKE_zlarfx(LAPACK_COL_MAJOR, 'R',
         #                 len, len, VP(vpos), ctmp, AU(st, st), LDX, WORK);
-        LAPACK.larf!('R', @view(VP[vpos:vpos+len-1]), ctmp, @view(A[2*nb+st+1:2*nb+ed+1,st+1:ed+1]), WORK)
+        ccall((:dlarf_64_, libblastrampoline), Cvoid,
+                (Ref{UInt8}, Ref{BlasInt}, Ref{BlasInt}, Ptr{Float64}, Ref{BlasInt},
+                 Ref{Float64}, Ptr{Float64}, Ref{BlasInt}, Ptr{Float64}, Clong),
+                'R', len, len, pointer(VP, vpos), BlasInt(1),
+                ctmp[], pointer(A, 2*nb+1+st*lda), LDX, WORK, 1)
 
         # // Eliminate the created col at st 
         VQ[vpos] = 1.;
         # memcpy( @VQ(vpos+1), AU(st+1, st), (len-1)*sizeof(coreblas_complex64_t) );
         # memset( AU(st+1, st), 0, (len-1)*sizeof(coreblas_complex64_t) );
-        VQ[vpos+1:vpos+len-1] .= A[2*nb+1:2*nb+len-1,st+1]
-        A[2*nb+2:2*nb+1+len,st+1]= 0.
+        VQ[vpos+1:vpos+len-1] .= A[2*nb+2:2*nb+len,st+1]
+        A[2*nb+2:2*nb+len,st+1] .= 0
 
         # LAPACKE_zlarfg(len, AU(st, st), VQ(vpos+1), 1, TAUQ(taupos) );
-        TAUQ[taupos] = LAPACK.larfg!(@view(VQ[vpos+1:vpos+len-1]))
+        # TAUQ[taupos] = LAPACK.larfg!(VQ[vpos:vpos+len-1])
+        ctmp[] = A[2*nb+1,st+1]
+        ccall((:dlarfg_64_, libblastrampoline), Cvoid,
+                (Ref{BlasInt}, Ref{Float64}, Ptr{Float64}, Ref{Int}, Ref{Float64}),
+                len, ctmp, pointer(VQ, vpos+1), BlasInt(1), Ref(TAUQ, taupos))
+        A[2*nb+1,st+1] = ctmp[]
 
         lenj = len-1;
-        ctmp = conj(TAUQ[taupos]);
+        ctmp[] = conj(TAUQ[taupos]);
 
         # LAPACKE_zlarfx(LAPACK_COL_MAJOR, 'L',
         #          len, lenj, VQ(vpos), ctmp, AU(st, st+1), LDX, WORK);
-        LAPACK.larf!('L', @view(VP[vpos:vpos+len-1]), ctmp, @view(A[2*nb+st:2*nb+ed,st+2:ed+1]), WORK)
+        ccall((:dlarf_64_, libblastrampoline), Cvoid,
+                (Ref{UInt8}, Ref{BlasInt}, Ref{BlasInt}, Ptr{Float64}, Ref{BlasInt},
+                 Ref{Float64}, Ptr{Float64}, Ref{BlasInt}, Ptr{Float64}, Clong),
+                'L', len, lenj, pointer(VQ, vpos), BlasInt(1),
+                ctmp[], pointer(A, 2*nb+lda*(st+1)), LDX, WORK, 1)
 
     # else 
     #     # /* ========================

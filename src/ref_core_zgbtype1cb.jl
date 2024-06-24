@@ -16,7 +16,7 @@ function ref_coreblas_zgbtype1cb!(
     uplo = 121
     nb = nb
     st=0
-    ed=2 # 4
+    ed=3 # 4
     sweep=1
     Vblksiz=1
     wantz=0
