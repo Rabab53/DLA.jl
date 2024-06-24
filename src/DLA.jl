@@ -2,9 +2,11 @@ module DLA
 
 using Base: require_one_based_indexing, USE_BLAS64
 
-using LinearAlgebra: LAPACK
+import LinearAlgebra
 
 include("bulge.jl")
+
+include("lapack_alt.jl")
 
 include("coreblas_types.jl")
 
