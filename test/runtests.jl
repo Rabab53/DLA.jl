@@ -6,14 +6,18 @@ using Random
 #     # Write your tests here.
 # end
 
-function test_approx_equal(A, B, err)
+function test_approx_equal(A, B, err, verbose=false)
     @assert size(A) == size(B)
     d = abs.((A .- B) ./ minimum(size(A)))
     ok = all(x->x<=err, d)
-    if !ok 
-        display(A)
-        display(B)
-        display(d)
+    if verbose
+        if !ok 
+            display(A)
+            display(B)
+            display(d)
+        end
+        display("max normalized error: $(maximum(d))")
+        display("    acceptable error: $(err)")
     end
     return ok
 end
@@ -27,7 +31,7 @@ for (elty, err) in
         function test_approx_equal(
             A::Union{AbstractMatrix{$elty}, Vector{$elty}}, 
             B::Union{AbstractMatrix{$elty}, Vector{$elty}})
-            return test_approx_equal(A, B, $err)
+            return test_approx_equal(A, B, $err, true)
         end
     end
 end
@@ -35,11 +39,11 @@ end
 @testset "core_zgbtype1cb" begin
     @testset for elty in (Float32, Float64, ComplexF32, ComplexF64)
         uplo = DLA.CoreBlasLower
-        n=8
+        n=12
         nb=4
         # figure out acceptable st, ed given n, nb
         st=1
-        ed=4
+        ed=5
         sweep=1
         Vblksiz=1
         wantz=0
