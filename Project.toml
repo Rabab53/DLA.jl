@@ -3,6 +3,13 @@ uuid = "d37ed344-79c4-486d-9307-6d11355a15a3"
 authors = ["Rabab Alomairy"]
 version = "1.0.0-DEV"
 
+[deps]
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+OpenBLAS32 = "51095b67-9e93-468d-a683-508b52f74e81"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+libcoreblas_jll = "339d4f0c-89b5-5ae2-b52c-218a0e582e15"
+
 [compat]
 julia = "1.10"
 

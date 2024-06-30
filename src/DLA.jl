@@ -3,6 +3,7 @@ module DLA
 using Base: require_one_based_indexing, USE_BLAS64
 
 import LinearAlgebra
+using LinearAlgebra
 
 include("bulge.jl")
 

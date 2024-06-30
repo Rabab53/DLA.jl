@@ -7,7 +7,7 @@ for elty in (Float64, Float32, ComplexF64, ComplexF32)
             n, 
             nb,
             A::AbstractMatrix{$elty}, 
-            lda,
+            # lda,
             VQ::Vector{$elty}, 
             TAUQ::Vector{$elty},
             VP::Vector{$elty}, 
@@ -19,7 +19,7 @@ for elty in (Float64, Float32, ComplexF64, ComplexF32)
             wantz,
             WORK::Vector{$elty})
 
-            # lda = size(A, 1)
+            lda = size(A, 1)
             # lda = max(1, stride(A,2))
 
             ctmp = Ref{Float64}()
@@ -100,9 +100,9 @@ for elty in (Float64, Float32, ComplexF64, ComplexF32)
                 A[nb+3:nb+len+1,st] .= 0
 
                 # LAPACKE_zlarfg(len, AL(st, st-1), VQ(vpos+1), 1, TAUQ(taupos) )
-                ctmp[] = AL[nb+2,st]
+                ctmp[] = A[nb+2,st]
                 LAPACK.larfg!(len, ctmp, pointer(VQ, vpos+1), Ref(TAUQ, taupos))
-                AL[nb+2,st] = ctmp[]
+                A[nb+2,st] = ctmp[]
 
                 # // Apply left on A(st:ed,st:ed) 
                 ctmp[] = conj(TAUQ[taupos]);
@@ -123,7 +123,7 @@ for elty in (Float64, Float32, ComplexF64, ComplexF32)
                 ctmp[] = conj(A[nb+1,st+1])
                 
                 # LAPACKE_zlarfg(len, &ctmp, VP(vpos+1), 1, TAUP(taupos) );
-                LAPACK.larfg!(len, ctmp[], pointer(VP, vpos+1), Ref(TAUP, taupos))
+                LAPACK.larfg!(len, ctmp, pointer(VP, vpos+1), Ref(TAUP, taupos))
                 A[nb+1,st+1] = ctmp[]
 
                 lenj = len-1;
@@ -138,5 +138,27 @@ for elty in (Float64, Float32, ComplexF64, ComplexF32)
             # // end of uplo case
             return;
         end
+
+        # WORK included
+        function coreblas_zgbtype1cb!(
+            uplo,
+            n, 
+            nb, 
+            A::AbstractMatrix{$elty}, 
+            VQ::Vector{$elty},  
+            TAUQ::Vector{$elty}, 
+            VP::Vector{$elty},  
+            TAUP::Vector{$elty},
+            st,
+            ed,
+            sweep,
+            Vblksiz,
+            wantz)
+        
+            WORK = Vector{$elty}(undef, nb)
+        
+            coreblas_zgbtype1cb!(uplo, n, nb, A, VQ, TAUQ, VP, TAUP, st, ed, sweep, Vblksiz, wantz, WORK)
+        end
+
     end
 end
