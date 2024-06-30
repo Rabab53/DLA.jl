@@ -13,7 +13,7 @@ include("coreblas_types.jl")
 
 include("core_zgbtype1cb.jl")
 
-include("ref_core_zgbtype1cb.jl")
+include("ref_coreblas.jl")
 
 include("quick_test.jl")
 

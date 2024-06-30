@@ -10,19 +10,19 @@ function test_approx_equal(A, B, err)
     @assert size(A) == size(B)
     d = abs.((A .- B) ./ minimum(size(A)))
     ok = all(x->x<=err, d)
-    if !ok 
-        display(A)
-        display(B)
-        display(d)
-    end
+    # if !ok 
+    #     display(A)
+    #     display(B)
+    #     display(d)
+    # end
     return ok
 end
 
 for (elty, err) in
-    ((:Float64,   :1e-16),
-     (:Float32,   :1e-8),
-     (:ComplexF64,:1e-16*sqrt(2)),
-     (:ComplexF32,:1e-8*sqrt(2)))
+    ((Float64,   1e-16),
+     (Float32,   1e-8),
+     (ComplexF64,1e-16*sqrt(2)),
+     (ComplexF32,1e-8*sqrt(2)))
     @eval begin
         function test_approx_equal(
             A::Union{AbstractMatrix{$elty}, Vector{$elty}}, 
