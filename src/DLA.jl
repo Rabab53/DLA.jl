@@ -11,7 +11,7 @@ include("lapack_alt.jl")
 
 include("coreblas_types.jl")
 
-include("core_zgbtype1cb.jl")
+include("coreblas_gbtype1cb.jl")
 
 include("ref_coreblas.jl")
 

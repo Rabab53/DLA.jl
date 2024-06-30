@@ -50,7 +50,7 @@ end
         VQ1 = zeros(n)
         TAUP1 = zeros(n)
         TAUQ1 = zeros(n)
-        DLA.ref_coreblas_zgbtype1cb!(Float64, uplo, n, nb, A1, VQ1, TAUQ1, VP1, TAUP1, st, ed, sweep, Vblksiz, wantz)
+        DLA.ref_coreblas_gbtype1cb!(uplo, n, nb, A1, VQ1, TAUQ1, VP1, TAUP1, st, ed, sweep, Vblksiz, wantz)
 
         Random.seed!(0)
         A2 = rand(Float64, (3*nb+1, n))
@@ -58,7 +58,7 @@ end
         VQ2 = zeros(Float64, n)
         TAUP2 = zeros(Float64, n)
         TAUQ2 = zeros(Float64, n)
-        DLA.coreblas_zgbtype1cb!(uplo, n, nb, A2, VQ2, TAUQ2, VP2, TAUP2, st, ed, sweep, Vblksiz, wantz)
+        DLA.coreblas_gbtype1cb!(uplo, n, nb, A2, VQ2, TAUQ2, VP2, TAUP2, st, ed, sweep, Vblksiz, wantz)
 
         @test test_approx_equal(A1, A2)
         @test test_approx_equal(VP1, VP2)
