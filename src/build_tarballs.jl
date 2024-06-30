@@ -14,7 +14,6 @@ sources = [
 script = raw"""
 cd $WORKSPACE/srcdir
 cd CoreBlas/
-export CC=aarch64-apple-darwin23-gcc-14
 cmake -B build -DCMAKE_INSTALL_PREFIX=$prefix -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TARGET_TOOLCHAIN} -DCMAKE_BUILD_TYPE=Release
 cmake --build build --parallel ${nproc}
 cmake --install build
@@ -24,7 +23,7 @@ logout
 # These are the platforms we will build for by default, unless further
 # platforms are passed in on the command line
 platforms = [
-    # Platform("x86_64", "linux"; libc = "glibc")
+    Platform("x86_64", "linux"; libc = "glibc")
 ]
 
 
