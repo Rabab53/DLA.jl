@@ -9,11 +9,7 @@ end
     NB::Integer, 
     Vblksiz::Integer,
     sweep::Integer, 
-    st::Integer, 
-    Vpos::Integer, 
-    TAUpos::Integer,
-    Tpos::Integer, 
-    myblkid::Integer) 
+    st::Integer) 
         
     prevcolblknb = 0
     prevblkcnt   = 0
