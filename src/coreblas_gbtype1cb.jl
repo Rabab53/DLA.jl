@@ -151,8 +151,7 @@ for elty in (Float64, Float32, ComplexF64, ComplexF32)
                 LAPACK.larfg!(len, ctmp, pointer(VP, vpos+1), Ref(TAUP, taupos))
 
                 # A[2*nb, st+1] = ctmp[];
-                @AU_set(st-1, st, ctmp[]display("max normalized error: $(maximum(d))")
-                display("    acceptable error: $(err)"))
+                @AU_set(st-1, st, ctmp[])
                 # // Apply right on A(st:ed,st:ed) 
                 ctmp[] = TAUP[taupos];
                     

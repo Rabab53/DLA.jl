@@ -36,7 +36,45 @@ for (elty, err) in
     end
 end
 
-@testset "core_zgbtype1cb" begin
+# @testset "coreblas_gbtype1cb" begin
+#     @testset for elty in (Float32, Float64, ComplexF32, ComplexF64)
+#         uplo = DLA.CoreBlasLower
+#         n=12
+#         nb=4
+#         # figure out acceptable st, ed given n, nb
+#         st=1
+#         ed=5
+#         sweep=1
+#         Vblksiz=1
+#         wantz=0
+
+#         Random.seed!(0)
+#         A1 = rand(elty, (3*nb+1, n))
+#         VP1 = zeros(elty, n)
+#         VQ1 = zeros(elty, n)
+#         TAUP1 = zeros(elty, n)
+#         TAUQ1 = zeros(elty, n)
+#         DLA.ref_coreblas_gbtype1cb!(uplo, n, nb, A1, VQ1, TAUQ1, VP1, TAUP1, st, ed, sweep, Vblksiz, wantz)
+
+#         Random.seed!(0)
+#         A2 = rand(elty, (3*nb+1, n))
+#         VP2 = zeros(elty, n)
+#         VQ2 = zeros(elty, n)
+#         TAUP2 = zeros(elty, n)
+#         TAUQ2 = zeros(elty, n)
+#         DLA.coreblas_gbtype1cb!(uplo, n, nb, A2, VQ2, TAUQ2, VP2, TAUP2, st, ed, sweep, Vblksiz, wantz)
+
+#         @test test_approx_equal(A1, A2)
+#         @test test_approx_equal(VP1, VP2)
+#         @test test_approx_equal(VQ1, VQ2)
+#         @test test_approx_equal(TAUP1, TAUP2)
+#         @test test_approx_equal(TAUQ1, TAUQ2)
+
+#     end
+# end
+
+
+@testset "coreblas_gbtype2cb" begin
     @testset for elty in (Float32, Float64, ComplexF32, ComplexF64)
         uplo = DLA.CoreBlasLower
         n=12
@@ -54,7 +92,7 @@ end
         VQ1 = zeros(elty, n)
         TAUP1 = zeros(elty, n)
         TAUQ1 = zeros(elty, n)
-        DLA.ref_coreblas_gbtype1cb!(uplo, n, nb, A1, VQ1, TAUQ1, VP1, TAUP1, st, ed, sweep, Vblksiz, wantz)
+        DLA.ref_coreblas_gbtype2cb!(uplo, n, nb, A1, VQ1, TAUQ1, VP1, TAUP1, st, ed, sweep, Vblksiz, wantz)
 
         Random.seed!(0)
         A2 = rand(elty, (3*nb+1, n))
@@ -62,7 +100,7 @@ end
         VQ2 = zeros(elty, n)
         TAUP2 = zeros(elty, n)
         TAUQ2 = zeros(elty, n)
-        DLA.coreblas_gbtype1cb!(uplo, n, nb, A2, VQ2, TAUQ2, VP2, TAUP2, st, ed, sweep, Vblksiz, wantz)
+        DLA.coreblas_gbtype2cb!(uplo, n, nb, A2, VQ2, TAUQ2, VP2, TAUP2, st, ed, sweep, Vblksiz, wantz)
 
         @test test_approx_equal(A1, A2)
         @test test_approx_equal(VP1, VP2)
@@ -72,4 +110,3 @@ end
 
     end
 end
-

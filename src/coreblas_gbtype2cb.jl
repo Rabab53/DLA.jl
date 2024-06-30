@@ -23,7 +23,7 @@ for elty in (Float64, Float32, ComplexF64, ComplexF32)
 
             LDX = lda-1
             J1  = ed+1
-            J2  = minimum(ed+nb,n-1)
+            J2  = min(ed+nb,n-1)
             lem = ed-st+1
             len = J2-J1+1
 
@@ -37,7 +37,7 @@ for elty in (Float64, Float32, ComplexF64, ComplexF32)
                         taupos = ((sweep+1)%2)*n + st
                     else
                         vpos, taupos, tpos, blkid = findVTpos(
-                            n, nb, Vblksiz, sweep, st);
+                            n, nb, Vblksiz, sweep, st)
                     end
                     vpos += 1
                     taupos += 1
@@ -53,10 +53,10 @@ for elty in (Float64, Float32, ComplexF64, ComplexF32)
 
                 if len > 1 
                     if wantz == 0
-                        vpos   = ((sweep+1)%2)*n + J1;
-                        taupos = ((sweep+1)%2)*n + J1;
+                        vpos   = ((sweep+1)%2)*n + J1
+                        taupos = ((sweep+1)%2)*n + J1
                     else 
-                        vpos, taupos, tpos, blkid = findVTpos(n,nb,Vblksiz,sweep,J1);
+                        vpos, taupos, tpos, blkid = findVTpos(n,nb,Vblksiz,sweep,J1)
                     end
                     vpos += 1
                     taupos += 1
@@ -78,8 +78,8 @@ for elty in (Float64, Float32, ComplexF64, ComplexF32)
                     # * We decrease len because we start at row st+1 instead of st.
                     # * row st is the row that has been revomved;
                     # */
-                    lem = lem-1;
-                    ctmp[] = TAUP[taupos];
+                    lem = lem-1
+                    ctmp[] = TAUP[taupos]
                     # LAPACKE_zlarfx_work(LAPACK_COL_MAJOR, 'R',
                     #             lem, len, VP(vpos), ctmp, AU(st+1, J1), LDX, WORK);
                     LAPACK.larf!('R', lem, len, pointer(VP, vpos),
@@ -115,6 +115,8 @@ for elty in (Float64, Float32, ComplexF64, ComplexF32)
                     else
                         vpos, taupos, tpos, blkid = findVTpos(n,nb,Vblksiz,sweep,J1)
                     end
+                    vpos += 1
+                    taupos += 1
 
                     # // Remove the first column of the created bulge
                     VQ[vpos] = 1.
@@ -145,5 +147,27 @@ for elty in (Float64, Float32, ComplexF64, ComplexF32)
             return
 
         end
+
+        # WORK included
+        function coreblas_gbtype2cb!(
+            uplo,
+            n, 
+            nb, 
+            A::AbstractMatrix{$elty}, 
+            VQ::Vector{$elty},  
+            TAUQ::Vector{$elty}, 
+            VP::Vector{$elty},  
+            TAUP::Vector{$elty},
+            st,
+            ed,
+            sweep,
+            Vblksiz,
+            wantz)
+        
+            WORK = Vector{$elty}(undef, nb)
+        
+            coreblas_gbtype2cb!(uplo, n, nb, A, VQ, TAUQ, VP, TAUP, st, ed, sweep, Vblksiz, wantz, WORK)
+        end
+
     end
 end
