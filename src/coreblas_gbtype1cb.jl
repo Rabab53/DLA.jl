@@ -219,7 +219,7 @@ for elty in (Float64, Float32, ComplexF64, ComplexF32)
                 # // Eliminate the created row at st 
                 VP[vpos] = 1.;
 
-                for i in 1:(len-1)
+                for i in 1:len-1
                     # VP[vpos+i] = conj(A[nb+1-i,st+1+i])
                     # A[nb+1-i,st+1+i] = 0.
                     VP[vpos+i] = conj(@AL(st, st+i))

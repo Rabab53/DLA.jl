@@ -63,7 +63,7 @@ for elty in (Float64, Float32, ComplexF64, ComplexF32)
 
                     # // Remove the top row of the created bulge 
                     VP[vpos] = 1.;
-                    for i=1:len-1
+                    for i in 1:len-1
                         VP[vpos+i] = conj(@AU(st, J1+i))
                         @AU_set(st, J1+i, 0.)
                     end

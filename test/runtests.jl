@@ -74,7 +74,7 @@ end
 # end
 
 
-@testset "coreblas_gbtype2cb" begin
+@testset "coreblas_gbtype3cb" begin
     @testset for elty in (Float32, Float64, ComplexF32, ComplexF64)
         uplo = DLA.CoreBlasLower
         n=12
@@ -92,7 +92,7 @@ end
         VQ1 = zeros(elty, n)
         TAUP1 = zeros(elty, n)
         TAUQ1 = zeros(elty, n)
-        DLA.ref_coreblas_gbtype2cb!(uplo, n, nb, A1, VQ1, TAUQ1, VP1, TAUP1, st, ed, sweep, Vblksiz, wantz)
+        DLA.ref_coreblas_gbtype3cb!(uplo, n, nb, A1, VQ1, TAUQ1, VP1, TAUP1, st, ed, sweep, Vblksiz, wantz)
 
         Random.seed!(0)
         A2 = rand(elty, (3*nb+1, n))
@@ -100,7 +100,7 @@ end
         VQ2 = zeros(elty, n)
         TAUP2 = zeros(elty, n)
         TAUQ2 = zeros(elty, n)
-        DLA.coreblas_gbtype2cb!(uplo, n, nb, A2, VQ2, TAUQ2, VP2, TAUP2, st, ed, sweep, Vblksiz, wantz)
+        DLA.coreblas_gbtype3cb!(uplo, n, nb, A2, VQ2, TAUQ2, VP2, TAUP2, st, ed, sweep, Vblksiz, wantz)
 
         @test test_approx_equal(A1, A2)
         @test test_approx_equal(VP1, VP2)
