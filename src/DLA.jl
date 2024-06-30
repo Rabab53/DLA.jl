@@ -8,6 +8,7 @@ using LinearAlgebra
 include("bulge.jl")
 
 include("lapack_alt.jl")
+include("lapack_native.jl")
 
 include("coreblas_types.jl")
 
