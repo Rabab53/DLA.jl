@@ -109,7 +109,7 @@ for elty in (Float64, Float32, ComplexF64, ComplexF32)
             lda = size(A, 1)
             # lda = max(1, stride(A,2))
 
-            ctmp = Ref{Float64}()
+            ctmp = Ref{$elty}()
             i, len, LDX, lenj = 0, 0, 0, 0
             blkid, vpos, taupos, tpos = 0, 0, 0, 0
 
@@ -222,7 +222,7 @@ for elty in (Float64, Float32, ComplexF64, ComplexF32)
                 for i in 1:(len-1)
                     # VP[vpos+i] = conj(A[nb+1-i,st+1+i])
                     # A[nb+1-i,st+1+i] = 0.
-                    VP[vpos+i] = @AL(st, st+i)
+                    VP[vpos+i] = conj(@AL(st, st+i))
                     @AL_set(st, st+i, 0.)
                 end
                 # ctmp[] = conj(A[nb+1,st+1])

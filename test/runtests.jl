@@ -10,11 +10,11 @@ function test_approx_equal(A, B, err)
     @assert size(A) == size(B)
     d = abs.((A .- B) ./ minimum(size(A)))
     ok = all(x->x<=err, d)
-    # if !ok 
-    #     display(A)
-    #     display(B)
-    #     display(d)
-    # end
+    if !ok 
+        display(A)
+        display(B)
+        display(d)
+    end
     return ok
 end
 
@@ -42,22 +42,22 @@ end
         ed=4
         sweep=1
         Vblksiz=1
-        wantz=1
+        wantz=0
 
         Random.seed!(0)
-        A1 = rand(3*nb+1, n)
-        VP1 = zeros(n)
-        VQ1 = zeros(n)
-        TAUP1 = zeros(n)
-        TAUQ1 = zeros(n)
+        A1 = rand(elty, (3*nb+1, n))
+        VP1 = zeros(elty, n)
+        VQ1 = zeros(elty, n)
+        TAUP1 = zeros(elty, n)
+        TAUQ1 = zeros(elty, n)
         DLA.ref_coreblas_gbtype1cb!(uplo, n, nb, A1, VQ1, TAUQ1, VP1, TAUP1, st, ed, sweep, Vblksiz, wantz)
 
         Random.seed!(0)
-        A2 = rand(Float64, (3*nb+1, n))
-        VP2 = zeros(Float64, n)
-        VQ2 = zeros(Float64, n)
-        TAUP2 = zeros(Float64, n)
-        TAUQ2 = zeros(Float64, n)
+        A2 = rand(elty, (3*nb+1, n))
+        VP2 = zeros(elty, n)
+        VQ2 = zeros(elty, n)
+        TAUP2 = zeros(elty, n)
+        TAUQ2 = zeros(elty, n)
         DLA.coreblas_gbtype1cb!(uplo, n, nb, A2, VQ2, TAUQ2, VP2, TAUP2, st, ed, sweep, Vblksiz, wantz)
 
         @test test_approx_equal(A1, A2)
