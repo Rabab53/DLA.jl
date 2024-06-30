@@ -34,7 +34,7 @@ end
 
 @testset "core_zgbtype1cb" begin
     @testset for elty in (Float32, Float64, ComplexF32, ComplexF64)
-        uplo = DLA.CoreBlasUpper
+        uplo = DLA.CoreBlasLower
         n=8
         nb=4
         # figure out acceptable st, ed given n, nb
@@ -42,7 +42,7 @@ end
         ed=4
         sweep=1
         Vblksiz=1
-        wantz=0
+        wantz=1
 
         Random.seed!(0)
         A1 = rand(3*nb+1, n)

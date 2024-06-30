@@ -5,20 +5,16 @@ using Base: cld
 end
 
 @inline function findVTpos(
-    N::Int,
-    NB::Int, 
-    Vblksiz::Int,
-    sweep::Int, 
-    st::Int, 
-    Vpos::Ref{Int}, 
-    TAUpos::Ref{Int},
-    Tpos::Ref{Int}, 
-    myblkid::Ref{Int}) 
+    N::Integer,
+    NB::Integer, 
+    Vblksiz::Integer,
+    sweep::Integer, 
+    st::Integer, 
+    Vpos::Integer, 
+    TAUpos::Integer,
+    Tpos::Integer, 
+    myblkid::Integer) 
         
-    prevcolblknb, prevblkcnt, prevcolblkid ::Int
-    curcolblknb, nbprevcolblk, mastersweep ::Int
-    blkid, locj, LDV ::Int
-
     prevcolblknb = 0
     prevblkcnt   = 0
     curcolblknb  = 0
@@ -27,40 +23,41 @@ end
 
     for prevcolblkid in 0:(nbprevcolblk-1)
         mastersweep  = prevcolblkid * Vblksiz;
-        prevcolblknb = coreblas_ceildiv((N-(mastersweep+2)),NB);
+        prevcolblknb = cld((N-(mastersweep+2)),NB);
         prevblkcnt   = prevblkcnt + prevcolblknb;
     end
 
-    curcolblknb = coreblas_ceildiv((st-sweep),NB);
+    curcolblknb = cld((st-sweep),NB);
     blkid       = prevblkcnt + curcolblknb -1;
     locj        = sweep%Vblksiz;
     LDV         = NB + Vblksiz -1;
   
-    myblkid[] = blkid;
-    Vpos[]    = blkid*Vblksiz*LDV  + locj*LDV + locj;
-    TAUpos[]  = blkid*Vblksiz + locj;
-    Tpos[]    = blkid*Vblksiz*Vblksiz + locj*Vblksiz + locj;
+    myblkid = blkid;
+    Vpos    = blkid*Vblksiz*LDV  + locj*LDV + locj;
+    TAUpos  = blkid*Vblksiz + locj;
+    Tpos    = blkid*Vblksiz*Vblksiz + locj*Vblksiz + locj;
+
+    return Int(Vpos), Int(TAUpos), Int(Tpos), Int(myblkid)
 end
 
 @inline function findVTsiz(
     N::Int,
     NB::Int,
     Vblksiz::Int,
-    blkcnt::Ref{Int},
-    LDV::Ref{Int})
-
-    colblk, nbcolblk ::Int
-    curcolblknb, mastersweep ::Int
+    blkcnt::Int,
+    LDV::Int)
   
-    blkcnt[] = 0;
+    blkcnt = 0;
     nbcolblk = coreblas_ceildiv((N-1),Vblksiz);
 
     for colblk in 0:(nbcolblk-1)
         mastersweep = colblk * Vblksiz;
         curcolblknb = coreblas_ceildiv((N-(mastersweep+2)),NB);
-        blkcnt[]    = blkcnt[] + curcolblknb;
+        blkcnt    = blkcnt + curcolblknb;
     end
 
-    blkcnt[] = blkcnt[] +1;
-    LDV[] = NB+Vblksiz-1;
+    blkcnt = blkcnt +1;
+    LDV = NB+Vblksiz-1;
+
+    return blkcnt, LDV
 end
