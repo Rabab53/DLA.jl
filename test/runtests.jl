@@ -38,6 +38,34 @@ for (elty, err) in
 end
 
 
+# @testset "larf" begin
+#     @testset for elty in (Float32, Float64, ComplexF32, ComplexF64)
+#     # @testset for elty in (ComplexF32, ComplexF64)
+#         ## larfg
+#         Random.seed!(0)
+#         side = 'L'
+#         m = 5
+#         n = 5
+#         lv = (side == 'L') ? m : n
+#         v = rand(elty, lv)
+#         C1 = rand(elty, (m, n))
+#         C2 = copy(C1)
+#         ldc = size(C1, 1)
+#         # ldx = ldc - 1
+#         tau = rand(elty)
+#         lw = (side == 'L') ? n : m
+#         work = Vector{elty}(undef, lw)
+
+#         DLA.larf!(side, v, tau, C1, work)
+
+#         LAPACK.larf!(side, m, n, pointer(v), tau, pointer(C2), ldc, work)
+
+#         # note: figure out reshape view for when leading dimension is intentionally off?
+
+#         @test test_approx_equal(C1, C2)
+#     end
+# end
+
 
 @testset "larfg" begin
     @testset for elty in (Float32, Float64, ComplexF32, ComplexF64)
