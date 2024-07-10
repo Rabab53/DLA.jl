@@ -1,6 +1,7 @@
 using LinearAlgebra
 using BenchmarkTools
 using Plots
+using JLD2
 
 include("zlarfbwrap.jl")
 include("zlarfb_v0.jl")
@@ -8,7 +9,8 @@ include("zlarfb_v1.jl")
 include("zlarfb_v2.jl")
 include("zlarfb_v3.jl")
 
-BLAS.set_num_threads(1) # to make sequential
+#BLAS.set_num_threads(1) # to make sequential
+BLAS.set_num_threads(Threads.nthreads())
 
 xvals = Float64[]
 y = Float64[]
@@ -26,11 +28,21 @@ y2m = Float64[]
 y3 = Float64[]
 y3m = Float64[]
 
+rd = Float64[]
+rf = Float64[]
 
-for m in [512, 1024, 2048, 4096, 8192, 16384]
+rdvl = Float64[]
+rfvl = Float64[]
+rlvd = Float64[]
+rlvf = Float64[]
+
+k = 128
+trans = 'N'
+
+for m in [512, 1024, 2048, 4096, 8192, 16384, 32768]
+    println("m = ", m)
     n = m
-    k = 64
-
+    
     push!(xvals, m)
     
     T = Float64
@@ -38,7 +50,6 @@ for m in [512, 1024, 2048, 4096, 8192, 16384]
     storev = 'C'
     direct = 'F'
     side = 'L'
-    trans = 'C'
                     
     C = rand(T, m, n)
     Tau = rand(T, k, k)
@@ -134,23 +145,58 @@ for m in [512, 1024, 2048, 4096, 8192, 16384]
     s3m = @ballocated zlarfbv3($side, $trans, $direct, $storev, $m, $n, $k, $V, $ldv, $Tau, $k, $c3, $m, $work, $ldw) samples = 5 evals = 1
     push!(y3, s3)
     push!(y3m, s3m / 10^3)
+    
+    push!(rd, s0/s1)
+    push!(rf, s3/s2)
+    push!(rdvl, s1/s)
+    push!(rfvl, s3/s)
+    push!(rlvd, s/s1)
+    push!(rlvf, s/s3)
 
 end
 
+@save "larfb t=40 k=$k trans=$trans.jdl2" xvals y ym y0 y0m y1 y1m y2 y2m y3 y3m rd rf rdvl rfvl rlvd rlvf
+
 p = plot()
-plot!(p, legend=:topleft, xlabel="matrix size", ylabel = "time (s)", title="larfb time single thread")
+plot!(p, legend=:topleft, xlabel="Matrix Size (n x n)", ylabel = "Time (s)", title="larfb Time Multi-Thread")
 plot!(p, xvals, y, marker=:circle, label="lapack")
-plot!(p, xvals, y0, marker=:circle, label="multiple dispatch + no wrap")
-plot!(p, xvals, y1, marker=:circle, label="multiple dispatch + wrap")
-plot!(p, xvals, y2, marker=:circle, label="internal function  + wrap")
-plot!(p, xvals, y3, marker=:circle, label="internal function + no wrap")
-savefig(p, "test time plot")
+plot!(p, xvals, y1, marker=:circle, label="Multiple Dispatch")
+plot!(p, xvals, y3, marker=:circle, label="Internal Function")
+savefig(p, "larfb time t=40 trans=$trans k=$k")
 
 q = plot()
-plot!(q, legend=:topleft, xlabel="matrix size", ylabel = "memory (KB))", title="larfb memory single thread")
-plot!(q, xvals, ym, marker=:circle, label="lapack")
-plot!(q, xvals, y0m, marker=:circle, label="multiple dispatch + no wrap")
-plot!(q, xvals, y1m, marker=:circle, label="multiple dispatch + wrap")
-plot!(q, xvals, y2m, marker=:circle, label="internal function  + wrap")
-plot!(q, xvals, y3m, marker=:circle, label="internal function + no wrap")
-savefig(q, "test memory plot")
+plot!(q, legend=:topleft, xlabel="Matrix Size (n x n)", ylabel = "Memory (KB)", title="larfb Memory Multi-Thread")
+# plot!(q, xvals, ym, marker=:circle, label="lapack")
+plot!(q, xvals, y1m, marker=:circle, label="Multiple Dispatch")
+plot!(q, xvals, y3m, marker=:circle, label="Internal Function")
+savefig(q, "larfb memory t=40 trans=$trans k=$k")
+
+#p1 = plot()
+#plot!(p1, legend=:topleft, xlabel="matrix size", ylabel = "time (s)", title="larfb time lapack vs internal function")
+#plot!(p1, xvals, y, marker=:circle, label="lapack")
+#plot!(p1, xvals, y3, marker=:circle, label="internal function")
+#savefig(p1, "lapack vs function trans =$trans k=$k")
+
+#p2 = plot()
+#plot!(p2, legend=:topleft, xlabel="matrix size", ylabel = "time (s)", title="larfb time lapack vs multiple dispatch")
+#plot!(p2, xvals, y, marker=:circle, label="lapack")
+#plot!(p2, xvals, y1, marker=:circle, label="multiple dispatch")
+#savefig(p2, "lapack vs multiple dispatch wrap k=64 trans = C")
+
+#p4 = plot()
+#plot!(p4, legend=:topleft, xlabel="matrix size", ylabel = "unwrapped / wrapped", title="larfb time wrapping comparisons")
+#plot!(p4, xvals, rd, marker=:circle, label="multiple dispatch")
+#plot!(p4, xvals, rf, marker=:circle, label="internal function")
+#savefig(p4, "wrapping comparisons ratio k=128 trans=C")
+
+p5 = plot()
+plot!(p5, legend=:topleft, xlabel="Matrix Size (n x n)", ylabel = "julia / lapack", title="larfb Time Ratios Multi-Thread")
+plot!(p5, xvals, rdvl, marker=:circle, label="Multiple Dispatch")
+plot!(p5, xvals, rfvl, marker=:circle, label="Internal Function")
+savefig(p5, "time ratios t=40 k=$k trans=$trans")
+
+#p6 = plot()
+#plot!(p6, legend=:topleft, xlabel="matrix size", ylabel = "julia / lapack", title="larfb time time ratio")
+#plot!(p6, xvals, rfvl, marker=:circle, label="internal function")
+#savefig(p6, "time ratio internal k=64 trans=C")
+

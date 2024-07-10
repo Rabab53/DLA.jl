@@ -1,10 +1,9 @@
 using Test
 using LinearAlgebra
 
-include("zlarfb_wip.jl")
 include("zlarfbwrap.jl")
-include("zlarfb_wip_v1.jl")
-include("zlarfb_wip_v2.jl")
+include("zlarfb_v3.jl")
+include("zlarfb_v1.jl")
 
 function gen_zlarfb_test_rand(::Type{T}, side, trans, storev, direct, m, n, k) where {T<: Number}
     C = rand(T, m, n)
