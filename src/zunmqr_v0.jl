@@ -4,7 +4,8 @@ using Plots
 
 include("zlarfb_v3.jl")
 
-function zunmqr(side, trans, m, n, k, ib, A, lda, T, ldt, C, work, ldwork)
+function zunmqrv0(side, trans, m, n, k, ib, A, lda, T, ldt, C, ldc, work, ldwork)
+	
 	if side != 'L' && side != 'R'
         throw(ArgumentError("illegal value of side"))
 		return -1
@@ -73,44 +74,45 @@ function zunmqr(side, trans, m, n, k, ib, A, lda, T, ldt, C, work, ldwork)
 	if ((side == 'L' && trans != 'N') || (side == 'R' && trans == 'N'))
 		i1 = 1
 		i3 = ib
+		ibstop = k
 	else
 		i1 = div((k-1),ib)*ib + 1
 		i3 = -ib
-	end
-
-	if ib > 0
-		ibstop = k
-	else
 		ibstop = 1
+	end
+	#println("start is ", i1, " step is ", i3, " stop is ", ibstop)
+	
+	ic = 1
+	jc = 1
+	ni = n
+	mi = m
+
+	if side == 'L'
+		wwork = ones(eltype(A), n, ib)
+		ldw = n
+	else
+		wwork = ones(eltype(A), m, ib)
+		ldw = m
 	end
 
 	for i in i1 : i3 : ibstop # start, step, stop
 		kb = min(ib, k-i+1)
-		#ic = 1
-		#jc = 1
-		ni = n
-		mi = m
+
+		#println("at i = ", i, " kb is ", kb)
 
 		if side == 'L'
 			# apply to C[i:m, 1:n]
 			mi = m - i + 1
-			#ic = i
-            cv = @view C[i:m, :]
+			ic = i
 		else
 			# apply to C[1:m, i:n]
 			ni = n-i + 1
-			#jc = i
-            cv = @view C[:, i:n]
+			jc = i
 		end
 
-        #cv = @view C[ic:m, jc:n] = &C[ldc*jc + ic]
-		#need to double check work dimensions 
+        cv = @view C[ic:m, jc:n]
 
-        zlarfbv3(side, trans, 'F', 'C', mi, ni, kb, (@view A[i:lda, i:k]), lda, (@view T[:, i:k]), ldt, cv, ldc, work, ldwork)
-
-		# call zlarfb(side, trans, 'F', 'C', mi, ni, kb, A, lda, work, ldt, C, ldc, work, ldwork)
-        #zlarfb(side, trans, 'F', 'C', mi, ni, kb, &A[lda*i+i], lda, &T[ldt*i], ldt, &C[ldc*jc+ic])
+        zlarfbv3(side, trans, 'F', 'C', mi, ni, kb, (@view A[i:lda, i:i+kb-1]), lda-i+1, (@view T[1:kb, i:i+kb-1]), kb, cv, ldc, (@view wwork[:, 1:kb]), ldw)
+        #zlarfbalt(side, trans, 'F', 'C', mi, ni, kb, A,i,i,(@view T[1:kb, i:i+kb-1]), C,ic, jc , wwork, ldw)
 	end
 end
-
-println("ran")
