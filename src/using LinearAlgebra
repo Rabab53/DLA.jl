@@ -1,0 +1,36 @@
+using LinearAlgebra
+using LinearAlgebra: libblastrampoline_jll, BlasInt, require_one_based_indexing
+using LinearAlgebra.LAPACK: liblapack, chkstride1, chklapackerror
+using LinearAlgebra.BLAS: @blasfunc
+"""
+subroutine dtpqrt 	( 	(integer  	m),
+		integer  	n,
+		integer  	l,
+		integer  	nb,
+		double precision, dimension( lda, * )  	a,
+		integer  	lda,
+		double precision, dimension( ldb, * )  	b,
+		integer  	ldb,
+		double precision, dimension( ldt, * )  	t,
+		integer  	ldt,
+		double precision, dimension( * )  	work,
+		integer  	info 
+	) 	
+"""
+function tpqrt(A::AbstractMatrix{T}, B::AbstractMatrix{T}, Tau::AbstractMatrix{T}) where T
+ 
+        Am, An = size(A)
+        Bm, Bn = size(B)
+        Tm, Tn = size(Tau)
+        work = Vector{T}(undef, Tn*An)
+        info = Ref{Int}(0)
+
+        ccall((:dtpqrt_, libblastrampoline_jll), Cvoid, 
+                (Int, Int, Int, Int, Ptr{T}, Int, Ptr{T}, Int, Ptr{T}, Int, Ptr{T}, Ptr{Int}), 
+                Am, An, Bm , Tn, A, Am, B, Bm, Tau, Tn, work, info)
+
+        if info[] != 0
+            throw(ErrorException("dtpqrt failed with info = $info"))
+        end
+        
+end
