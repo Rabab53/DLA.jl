@@ -97,13 +97,13 @@ for T in [Float64, Float32, ComplexF64, ComplexF32]
             p = plot()
             plot!(p, legend=:topleft, xlabel="Matrix Size (n x n)", ylabel="Time (s)", title="unmqr Time Multi-Thread")
             plot!(p, xvals, y, marker=:circle, label="lapack")
-            plot!(p, xvals, y0, marker=:star3, label="julia Native")
+            plot!(p, xvals, y0, marker=:star8, label="julia Native")
             savefig(p, "unmqr time type=$T t=$t ib=$ib trans=$trans")
 
             q = plot()
             plot!(q, legend=:topleft, xlabel="Matrix Size (n x n)", ylabel = "Memory (KB)", title="unmqr Memory Multi-Thread")
             plot!(q, xvals, ym, marker=:circle, label="lapack")
-            plot!(q, xvals, y0m, marker=:star3, label="julia Native")
+            plot!(q, xvals, y0m, marker=:star8, label="julia Native")
             savefig(q, "unmqr memory type=$T t=$t ib=$ib trans=$trans")
             
             rats = [rlvj; rjvl]
