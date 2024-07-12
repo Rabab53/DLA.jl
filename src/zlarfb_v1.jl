@@ -7,22 +7,24 @@ function zlarfbv1(side, trans, direct, storev, m, n, k, v, ldv, t, ldt, c, ldc, 
 
     if storev == 'C'
         if direct == 'F'
-            t = UpperTriangular(t)
+            t = t
 
             if side == 'L'
                 c1 = @view c[1:k,:]
                 c2 = @view c[k+1:m,:]
-                v1 = UnitLowerTriangular(@view v[1:k,:]) #unit lower triangular
+                v1 = @view v[1:k,:] #unit lower triangular
                 v2 = @view v[k+1:m,:]
             
                 # W = C1^H
                 # og copied and conjugated by row w/ zcopy
+                """
                 for i in 1:k
                     for j in 1:n
                         work[j,i] = conj(c[i,j])
                     end
                 end
-
+                """
+                work = c1'
                 # W = W*V1, W = ldw by k, V1 is k by k
                 # og ztrmm 
                 work *= v1
@@ -52,26 +54,31 @@ function zlarfbv1(side, trans, direct, storev, m, n, k, v, ldv, t, ldt, c, ldc, 
                 work *= (v1')
 
                 # c1 = c1 - w^h
-
+                """
                 for j in 1:k
                     for i in 1:n
                         c[j,i] = c[j,i] - conj(work[i,j])
                     end
                 end
+                """
+                c1 -= work'
 
             else 
                 if side == 'R' || side == 'r'
                     c1 = @view c[:, 1:k]
                     c2 = @view c[:, k+1:n]
-                    v1 = UnitLowerTriangular(@view v[1:k,:])
+                    v1 = @view v[1:k,:]
                     v2 = @view v[k+1:n,:]
 
                     #W = C1
+                    """
                     for i in 1:m
                         for j in 1:k
                             work[i,j] = c[i,j]
                         end
                     end
+                    """                    
+                    work = c1
 
                     # w = w*v1
                     #call ztrmm
@@ -100,11 +107,15 @@ function zlarfbv1(side, trans, direct, storev, m, n, k, v, ldv, t, ldt, c, ldc, 
                     work = work*(v1')
 
                     #c1 = c1 - w
+                    """
                     for j in 1:k
                         for i in 1:m
                             c[i,j] = c[i,j] - work[i,j]
                        end
                     end
+                    """
+
+                    c1 -= work
                 end
             end
         else
@@ -114,14 +125,18 @@ function zlarfbv1(side, trans, direct, storev, m, n, k, v, ldv, t, ldt, c, ldc, 
                 c1 = @view c[1:m-k,:]
                 c2 = @view c[m-k+1:m,:]
                 v1 = @view v[1:ldv-k,:]
-                v2 = UnitUpperTriangular(@view v[ldv-k+1:ldv,:])
+                v2 = @view v[ldv-k+1:ldv,:]
                 
                 # w = c2^h
+                """
                 for i in 1:k
                     for j in 1:n
                         work[j,i] = conj(c2[i,j])
                     end
                 end
+                """
+
+                work = c2'
 
                 work = work*v2
 
@@ -144,24 +159,30 @@ function zlarfbv1(side, trans, direct, storev, m, n, k, v, ldv, t, ldt, c, ldc, 
                 work = work*(v2')
 
                 #c2 = c2 - w^H
+                """
                 for j in 1:k
                     for i in 1:n
                         c[m-k+j,i] = c[m-k+j,i] - conj(work[i,j])
                     end
                 end
+                """
+                c2 = work'
             else 
                 if side == 'R' || side == 'r'
                     c1 = @view c[:,1:n-k]
                     c2 = @view c[:,n-k+1:n]
                     v1 = @view v[1:ldv-k,:]
-                    v2 = UnitUpperTriangular(@view v[ldv-k+1:ldv,:])
+                    v2 = @view v[ldv-k+1:ldv,:]
 
                     # w = c2
+                    """
                     for i in 1:m
                         for j in 1:k
                             work[i,j] = c2[i,j]
                         end
                     end
+                    """
+                    work = c2
 
                     work = work*v2
 
@@ -184,32 +205,38 @@ function zlarfbv1(side, trans, direct, storev, m, n, k, v, ldv, t, ldt, c, ldc, 
                     work = work*(v2')
 
                     #c2 = c2-w
+                    """
                     for j in 1:k
                         for i in 1:m
                             c[i,n-k+j] = c[i,n-k+j] - work[i,j]
                         end
                     end
+                    """
+
+                    c2 -= work
                 end
             end
         end
     else 
         if storev == 'R'
             if direct == 'F'
-                t = UpperTriangular(t)
+                t = t
                 
                 if side == 'L'
-                    v1 = UnitUpperTriangular(@view v[:, 1:k])
+                    v1 = @view v[:, 1:k]
                     v2 = @view v[:, k+1:m]
                     c1 = @view c[1:k, :]
                     c2 = @view c[k+1:m, :]
 
                     #w = c1^h
+                    """
                     for i in 1:k
                         for j in 1:n
                             work[j,i] = conj(c1[i,j])
                         end
                     end
-
+                    """
+                    work = c1
                     work = work*(v1')
 
                     if m > k
@@ -231,26 +258,33 @@ function zlarfbv1(side, trans, direct, storev, m, n, k, v, ldv, t, ldt, c, ldc, 
                     work = work*v1
 
                     #c1 = c1 - w^h
+                    """
                     for j in 1:k
                         for i in 1:n
                             c[j,i] = c[j,i] - conj(work[i,j])
                         end
                     end
+                    """
+                    c1 -=work'
 
                 else 
                     if side == 'R' || side == 'r'
                         
-                        v1 = UnitUpperTriangular(@view v[:, 1:k])
+                        v1 = @view v[:, 1:k]
                         v2 = @view v[:, k+1:n]
                         c1 = @view c[:, 1:k]
                         c2 = @view c[:, k+1:n]
 
                         #w = c1
+                        """
                         for i in 1:m
                             for j in 1:k
                                 work[i,j] = c1[i,j]
                             end
                         end
+                        """
+
+                        work = c1
 
                         work = work*(v1')
 
@@ -273,12 +307,14 @@ function zlarfbv1(side, trans, direct, storev, m, n, k, v, ldv, t, ldt, c, ldc, 
                         work = work*v1
                         
                         #c1 = c1 - w
-
+                        """
                         for j in 1:k
                             for i in 1:m
                                 c[i,j] = c[i,j] - work[i,j]
                             end
                         end
+                        """
+                        c1 -= work
 
                     end
                 end
@@ -287,16 +323,20 @@ function zlarfbv1(side, trans, direct, storev, m, n, k, v, ldv, t, ldt, c, ldc, 
 
                 if side == 'L' || side == 'l'
                     v1 = @view v[:, 1:m-k]
-                    v2 = UnitLowerTriangular(@view v[:, m-k+1:m])
+                    v2 = @view v[:, m-k+1:m]
                     c1 = @view c[1:m-k,:]
                     c2 = @view c[m-k+1:m,:]
 
+                    """
                     #w = c2^h
                     for i in 1:k
                         for j in 1:n
                             work[j,i] = conj(c2[i,j])
                         end
                     end
+                    """
+
+                    work = c2
 
                     work = work * (v2')
                     
@@ -319,25 +359,31 @@ function zlarfbv1(side, trans, direct, storev, m, n, k, v, ldv, t, ldt, c, ldc, 
                     work = work*v2
                     
                     #c2 = c2 - w^h
+                    """
                     for j in 1:k
                         for i in 1:n
                             c[m-k+j,i] = c[m-k+j,i] - conj(work[i,j])
                         end
                     end
+                    """
+                    c2 -= work
 
                 else 
                     if side == 'R'
                         v1 = @view v[:, 1:n-k]
-                        v2 = UnitLowerTriangular(@view v[:, n-k+1:n])
+                        v2 = @view v[:, n-k+1:n]
                         c1 = @view c[:, 1:n-k]
                         c2 = @view c[:,n-k+1:n]
 
                         #w = c2
+                        """
                         for i in 1:m
                             for j in 1:k
                                 work[i,j] = c2[i,j]
                             end
                         end
+                        """
+                        work = c2
 
                         work = work * (v2')
 
@@ -360,11 +406,14 @@ function zlarfbv1(side, trans, direct, storev, m, n, k, v, ldv, t, ldt, c, ldc, 
                         work = work*v2
 
                         #c2 = c2 - w
+                        """
                         for j in 1:k
                             for i in 1:m
                                 c[i,n-k+j] = c[i,n-k+j] - work[i,j]
                             end
                         end
+                        """
+                        c2 -=work
                     end
                 end
             end

@@ -3,7 +3,7 @@ using BenchmarkTools
 using Plots
 using StatsPlots
 using JLD2
-
+using CUDA
 include("../src/zlarfbwrap.jl")
 include("../src/zlarfb_v0.jl")
 include("../src/zlarfb_v1.jl")
@@ -14,11 +14,11 @@ include("../src/zlarfb_v3.jl")
 t = 40
 BLAS.set_num_threads(Threads.nthreads())
 
-for T in [Float64, ComplexF64, Float32, ComplexF32]
+for T in [Float64]#[Float64, ComplexF64, Float32, ComplexF32]
     println(T)
 
-    for k in [64, 128]
-        for trans in ['C', 'N']
+    for k in [64]#[64, 128]
+        for trans in ['N']#['C', 'N']
 
             println("k is ", k, " trans is ", trans)
 
@@ -49,7 +49,7 @@ for T in [Float64, ComplexF64, Float32, ComplexF32]
             #k = 128
             #trans = 'N'
             
-            for m in [512, 1024, 2048, 4096, 8192, 16384, 32768, 65536]
+            for m in [1024]#[512, 1024, 2048, 4096, 8192, 16384, 32768, 65536]
                 println("m = ", m)
                 n = m
                 
@@ -61,38 +61,38 @@ for T in [Float64, ComplexF64, Float32, ComplexF32]
                 direct = 'F'
                 side = 'L'
                                 
-                C = rand(T, m, n)
-                Tau = rand(T, k, k)
+                C = CuArray(rand(T, m, n))
+                Tau = CuArray(rand(T, k, k))
             
                 if side == 'L'
-                    work = rand(T,n,k)
+                    work = CuArray(rand(T,n,k))
                     ldw = n
             
                     if storev == 'C'
-                        V = rand(T,m,k)
+                        V = CuArray(rand(T,m,k))
                         ldv = m
                         dv = m
                     else #storev = R
-                        V = rand(T,k,m)
+                        V = CuArray(rand(T,k,m))
                         ldv = k
                         dv = m
                     end
             
                 else #side = 'R'
-                    work = rand(T, m, k)
+                    work = CuArray(rand(T, m, k))
                     ldw = m
             
                     if storev == 'C'
-                        V = rand(T,n,k)
+                        V = CuArray(rand(T,n,k))
                         ldv = n
                         dv = n
                     else #storev = R
-                        V = rand(T,k,n)
+                        V = CuArray(rand(T,k,n))
                         ldv = k
                         dv = n
                     end
                 end
-            
+            """
                 for i in 1:k
                     if direct == 'F'
                         V[i,i] = 1
@@ -125,53 +125,64 @@ for T in [Float64, ComplexF64, Float32, ComplexF32]
                         end
                     end
                 end
+                """
             
                 c0 = deepcopy(C)
                 c1 = deepcopy(C)
                 c2 = deepcopy(C)
                 c3 = deepcopy(C)
                 
-                s = @belapsed larfb!($T,$side,$trans,$direct,$storev,$V,$Tau,$C) samples = 7 evals = 1
-                sm = @ballocated larfb!($T,$side,$trans,$direct,$storev,$V,$Tau,$C) samples = 7 evals = 1
+                v = Array(V)
+                tau = Array(Tau)
+                c = Array(C)
+
+                s = @belapsed larfb!($T,$side,$trans,$direct,$storev,$v,$tau,$c) #samples = 7 evals = 1
+                sm = @ballocated larfb!($T,$side,$trans,$direct,$storev,$v,$tau,$c) #samples = 7 evals = 1
                 @show s, sm
                 push!(y, s)
                 push!(ym, sm / 10^3)
-                
+                """
                 s0 = @belapsed zlarfbv0($side, $trans, $direct, $storev, $m, $n, $k, $V, $ldv, $Tau, $k, $c0, $m, $work, $ldw) samples = 7 evals = 1
                 s0m = @ballocated zlarfbv0($side, $trans, $direct, $storev, $m, $n, $k, $V, $ldv, $Tau, $k, $c0, $m, $work, $ldw) samples = 7 evals = 1
                 @show s0, s0m
                 push!(y0, s0)
                 push!(y0m, s0m / 10^3)
-            
-                s1 = @belapsed zlarfbv1($side, $trans, $direct, $storev, $m, $n, $k, $V, $ldv, $Tau, $k, $c1, $m, $work, $ldw) samples = 7 evals = 1
-                s1m = @ballocated zlarfbv1($side, $trans, $direct, $storev, $m, $n, $k, $V, $ldv, $Tau, $k, $c1, $m, $work, $ldw) samples = 7 evals = 1
+                """
+
+                s1 = @belapsed @sync begin
+                    zlarfbv1($side, $trans, $direct, $storev, $m, $n, $k, $V, $ldv, $Tau, $k, $c1, $m, $work, $ldw) #samples = 7 evals = 1
+                end
+                s1m = @ballocated @sync begin
+                    zlarfbv1($side, $trans, $direct, $storev, $m, $n, $k, $V, $ldv, $Tau, $k, $c1, $m, $work, $ldw) #samples = 7 evals = 1
+                end   
                 @show s1, s1m
                 push!(y1, s1)
                 push!(y1m, s1m / 10^3)
             
+                """
                 s2 = @belapsed zlarfbv2($side, $trans, $direct, $storev, $m, $n, $k, $V, $ldv, $Tau, $k, $c2, $m, $work, $ldw) samples = 7 evals = 1
                 s2m = @ballocated zlarfbv2($side, $trans, $direct, $storev, $m, $n, $k, $V, $ldv, $Tau, $k, $c2, $m, $work, $ldw) samples = 7 evals = 1
                 @show s2, s2m
                 push!(y2, s2)
                 push!(y2m, s2m / 10^3)
-            
+              
                 s3 = @belapsed zlarfbv3($side, $trans, $direct, $storev, $m, $n, $k, $V, $ldv, $Tau, $k, $c3, $m, $work, $ldw) samples = 7 evals = 1
                 s3m = @ballocated zlarfbv3($side, $trans, $direct, $storev, $m, $n, $k, $V, $ldv, $Tau, $k, $c3, $m, $work, $ldw) samples = 7 evals = 1
                 @show s3, s3m
                 push!(y3, s3)
                 push!(y3m, s3m / 10^3)
-                
-                push!(rd, s0/s1)
-                push!(rf, s3/s2)
+                """
+                #push!(rd, s0/s1)
+                #push!(rf, s3/s2)
                 push!(rdvl, s1/s)
-                push!(rfvl, s3/s)
+                #push!(rfvl, s3/s)
                 push!(rlvd, s/s1)
-                push!(rlvf, s/s3)
+                #push!(rlvf, s/s3)
             
             end
             
             # plotting, can do later too if needed
-
+           """
             xvals = Int.(xvals)
             xvals = string.(xvals)
 
@@ -190,13 +201,15 @@ for T in [Float64, ComplexF64, Float32, ComplexF32]
             plot!(q, xvals, y1m, marker=:star, label="Multiple Dispatch")
             plot!(q, xvals, y3m, marker=:star8, label="Internal Function")
             savefig(q, "larfb memory type=$T t=$t k=$k trans=$trans")
-            
+            """
+
             """
             p5 = plot()
             plot!(p5, legend=:topleft, xlabel="Matrix Size (n x n)", ylabel = "julia / lapack", title="larfb Time Ratios SMultithreaded")
             plot!(p5, xvals, rdvl, marker=:circle, label="Multiple Dispatch")
             plot!(p5, xvals, rfvl, marker=:circle, label="Internal Function")
             savefig(p5, "larfb time ratios type=$T t=$t k=$k trans=$trans")
+            """
             """
             rats = [rlvd; rlvf]
             b1 = minimum(rats) - 0.15
@@ -206,7 +219,7 @@ for T in [Float64, ComplexF64, Float32, ComplexF32]
                             label=["Multiple Dispatch" "Internal Function"], 
                             xlabel="Matrix Size (n x n)", ylabel="lapack / julia", title="time ratios")
             savefig(p1, "larfb time ratio type=$T t=$t k=$k trans=$trans")
-
+            """
 
         end
     end

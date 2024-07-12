@@ -3,9 +3,11 @@ using BenchmarkTools
 using JLD2
 using Plots
 using StatsPlots
+using CUDA
 
-include("zunmqr_v0.jl")
-include("zunmqrwrap.jl")
+include("../src/zunmqr_v0.jl")
+include("../src/zunmqr_v0_cuda.jl")
+include("../src/zunmqrwrap.jl")
 
 #BLAS.set_num_threads(1) # to make sequential
 BLAS.set_num_threads(Threads.nthreads())
@@ -25,26 +27,36 @@ for T in [Float64, Float32, ComplexF64, ComplexF32]
             y = Float64[] #lapack
             ym = Float64[]
 
-            y0 = Float64[] #julia native
-            y0m = Float64[]
+            y1 = Float64[] #lapack
+            ym1 = Float64[]
+
+            y0j = Float64[] #julia native
+            y0jm = Float64[]
+
+
+            y1j = Float64[] #julia native
+            y1jm = Float64[]
 
             rlvj = Float64[]
             rjvl = Float64[]
+
+            rlvj1 = Float64[]
+            rjvl1 = Float64[]
             
-            for m in [512, 1024, 2048, 4096, 8192, 16384, 32768]
+            for m in [512, 1024, 2048]#, 4096, 8192, 16384, 32768]
                 println("m = ", m)
                 n = m
                 k = m
 
                 push!(xvals, m)
 
-                C = rand(T,m,n)
+                C = CuArray(rand(T,m,n))
 
                 if side == 'L'
-                    A = rand(T,m,k)
+                    A = CuArray(rand(T,m,k))
                     lda = m
                     ldw = n
-                    work = rand(T,n,n)
+                    work = CuArray(rand(T,n,n))
                 else
                     A = rand(T,n,k)
                     lda = n
@@ -52,68 +64,129 @@ for T in [Float64, Float32, ComplexF64, ComplexF32]
                     work = rand(T,m,ib)
                 end
                 
-                Tau = rand(T,ib,k)
+                Tau = CuArray(rand(T,ib,k))
                 Tau1 = rand(T,k)
-                A1 = deepcopy(A)
-                LinearAlgebra.LAPACK.geqrt!(A, Tau)
-                LinearAlgebra.LAPACK.geqrf!(A1, Tau1)
+                A1 = Array(A)
+                #CUSOLVER.geqrf!(A, Tau)
+                #CUSOLVER.geqrf!(A1, Tau1)
                 
-                C0 = deepcopy(C)
-                C2 = deepcopy(C)
+                C0 = Array(C)
+                C2 = Array(C)
                 A2 = deepcopy(A)
                 Tau2 = deepcopy(Tau)
 
                 A3 = deepcopy(A1)
                 Tau3 = deepcopy(Tau1)
-                C3 = deepcopy(C)
-
+                C3 = Array(C)
                 
-                if (T == Float64 || T == Float32) && trans == 'C'
-                    s = @belapsed unmqr!($T, $side, 'T', $A1, $Tau1, $C) samples = 7 evals = 1
-                    sm = @ballocated unmqr!($T, $side, 'T', $A3, $Tau3, $C3) samples = 7 evals = 1
+                C4 = deepcopy(C)
+                
+               if (T == Float64 || T == Float32) && trans == 'C'
+                    #LAPACK
+                    s = @belapsed  unmqr!($T, $side, 'T', $A1, $Tau1, $C0) samples = 7 evals = 1
+                    sm = @ballocated  unmqr!($T, $side, 'T', $A3, $Tau3, $C3) samples = 7 evals = 1
+                    @show s, sm
                     push!(y,s)
                     push!(ym, sm / 10^3)
-                else
-                    s = @belapsed unmqr!($T, $side, $trans, $A1, $Tau1, $C) samples = 7 evals = 1
-                    sm = @ballocated unmqr!($T, $side, $trans, $A3, $Tau3, $C3) samples = 7 evals = 1
-                    push!(y,s)
-                    push!(ym, sm / 10^3)
-                end
-            
-                s0 = @belapsed zunmqrv0($side, $trans, $m, $n, $k, $ib, $A, $lda, $Tau, $ib, $C0, $m, $work, $ldw) samples = 7 evals = 1
-                s0m = @ballocated zunmqrv0($side, $trans, $m, $n, $k, $ib, $A2, $lda, $Tau2, $ib, $C2, $m, $work, $ldw) samples = 7 evals = 1
-                push!(y0, s0)
-                push!(y0m, s0m/10^3)
 
-                push!(rlvj, s/s0)
-                push!(rjvl, s0/s)
+                    A1 = CuArray(A1)
+                    Tau1 = CuArray(Tau1)
+                    C0 = CuArray(C0)
+                    C3 = CuArray(C3)
+                    A3 = CuArray(A3)
+                    Tau3 = CuArray(Tau3)
+                    #CU
+                    s1 = @belapsed  CUSOLVER.ormqr!($side, 'T', $A1, $Tau1, $C0) samples = 7 evals = 1
+                    sm1 = @ballocated  CUSOLVER.ormqr!($side, 'T', $A3, $Tau3, $C3) samples = 7 evals = 1
+                    @show s1, sm1
+                    push!(y1,s1)
+                    push!(ym1, sm1 / 10^3)
+                
+                else
+                    #LAPACK
+                    s = @belapsed unmqr!($T, $side, $trans, $A1, $Tau1, $C0) samples = 7 evals = 1
+                    sm = @ballocated unmqr!($T, $side, $trans, $A3, $Tau3, $C3) samples = 7 evals = 1
+                    @show s, sm
+                    push!(y,s)
+                    push!(ym, sm / 10^3)
+
+
+                    A1 = CuArray(A1)
+                    Tau1 = CuArray(Tau1)
+                    C0 = CuArray(C0)
+                    C3 = CuArray(C3)
+                    A3 = CuArray(A3)
+                    Tau3 = CuArray(Tau3)
+                    #CU
+                    s1 = @belapsed  CUSOLVER.ormqr!($side, $trans, $A1, $Tau1, $C0) samples = 7 evals = 1
+                    sm1 = @ballocated  CUSOLVER.ormqr!($side, $trans, $A3, $Tau3, $C3) samples = 7 evals = 1
+                    @show s1, sm1
+                    push!(y1,s1)
+                    push!(ym1, sm1 / 10^3)
+
+                end
+
+                #Julia cuda 
+                s1j = @belapsed zunmqrv0g($side, $trans, $m, $n, $k, $ib, $A, $lda, $Tau, $ib, $C, $m, $work, $ldw) samples = 7 evals = 1
+                s1jm = @ballocated zunmqrv0g($side, $trans, $m, $n, $k, $ib, $A2, $lda, $Tau2, $ib, $C4, $m, $work, $ldw) samples = 7 evals = 1
+                @show s1j, s1jm
+                push!(y1j, s1j)
+                push!(y1jm, s1jm/10^3)
+
+                #Julia multithreaded
+                C = Array(C)
+                C4 = Array(C4)
+                Tau = Array(Tau)
+                Tau2 = Array(Tau2)
+                A = Array(A)
+                A2 = Array(A2)
+                work = Array(work)
+                s0j = @belapsed zunmqrv0($side, $trans, $m, $n, $k, $ib, $A, $lda, $Tau, $ib, $C, $m, $work, $ldw) samples = 7 evals = 1
+                s0jm = @ballocated zunmqrv0($side, $trans, $m, $n, $k, $ib, $A2, $lda, $Tau2, $ib, $C4, $m, $work, $ldw) samples = 7 evals = 1
+                @show s0j, s0jm
+                push!(y0j, s0j)
+                push!(y0jm, s0jm/10^3)
+
+
+                push!(rlvj, s/s0j)
+                push!(rjvl, s0j/s)
+
+                push!(rlvj1, s1/s1j)
+                push!(rjvl1, s1j/s1)
+
             end
-            
+
             xvals = Int.(xvals)
             xvals = string.(xvals)
 
-            @save "unmqr type=$T t=$t ib=$ib trans=$trans.jdl2" xvals y ym y0 y0m rlvj rjvl
+            @save "unmqr type=$T t=$t ib=$ib trans=$trans.jdl2" xvals y ym  y1 ym1 y0j y0jm y1j y1jm rlvj rjvl rlvj1 rjvl1
 
-            p = plot()
+            p = plot(yaxis=:log)
             plot!(p, legend=:topleft, xlabel="Matrix Size (n x n)", ylabel="Time (s)", title="unmqr Time Multi-Thread")
-            plot!(p, xvals, y, marker=:circle, label="lapack")
-            plot!(p, xvals, y0, marker=:star8, label="julia Native")
+            plot!(p, xvals, y, marker=:circle, label="LAPACK")
+            plot!(p, xvals, y0j, marker=:star8, label="Julia Multithreaded")
+            plot!(p, xvals, y1, marker=:circle, label="CUSOLVER")
+            plot!(p, xvals, y1j, marker=:star8, label="Julia CUDA-GPU")
             savefig(p, "unmqr time type=$T t=$t ib=$ib trans=$trans")
 
-            q = plot()
+            q = plot(yaxis=:log)
             plot!(q, legend=:topleft, xlabel="Matrix Size (n x n)", ylabel = "Memory (KB)", title="unmqr Memory Multi-Thread")
-            plot!(q, xvals, ym, marker=:circle, label="lapack")
-            plot!(q, xvals, y0m, marker=:star8, label="julia Native")
+            plot!(q, xvals, ym, marker=:circle, label="LAPACK")
+            plot!(q, xvals, y0jm, marker=:star8, label="Julia Multithreaded")
+            plot!(q, xvals, ym1, marker=:circle, label="CUSOLVER")
+            plot!(q, xvals, y1jm, marker=:star8, label="Julia CUDA-GPU")
             savefig(q, "unmqr memory type=$T t=$t ib=$ib trans=$trans")
             
-            rats = [rlvj; rjvl]
+            rats = [rlvj; rlvj1]
             b1 = minimum(rats) - 0.15
             b2 = maximum(rats) + 0.15
 
-            p1 = groupedbar(xvals, [rlvj rjvl], ylimits=(b1,b2),
-                label=["lapack / julia" "julia / lapack"],
+            p1 = groupedbar(xvals, [rlvj rlvj1], ylimits=(b1,b2),
+                label=["LAPACK / Julia Multithreaded" "CUSOLVER / Julia  CUDA-GPU"],
                 xlabel="Matrix Size (n x n)", ylabel="ratio", title="unmqr time ratio")
             savefig(p1, "unmqr time ratio type=$T t=$t ib=$ib trans=$trans")
+
+
         end
     end
 end

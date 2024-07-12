@@ -1,367 +1,118 @@
 using LinearAlgebra
+using BenchmarkTools
+using Plots
 
-function zlarfbv0(side, trans, direct, storev, m, n, k, v, ldv, t, ldt, c, ldc, work, ldwork)
-    if m <= 0 || n <= 0
-        return
-    end
+include("zlarfb_v1.jl")
+#include("zlarfbalt.jl")
 
-    if storev == 'C'
-        if direct == 'F'
-            if side == 'L'
-                c1 = @view c[1:k,:]
-                c2 = @view c[k+1:m,:]
-                v1 = @view v[1:k,:] #unit lower triangular
-                v2 = @view v[k+1:m,:]
-            
-                # W = C1^H
-                # og copied and conjugated by row w/ zcopy
-                for i in 1:k
-                    for j in 1:n
-                        work[j,i] = conj(c[i,j])
-                    end
-                end
+function zunmqrv0(side, trans, m, n, k, ib, A, lda, T, ldt, C, ldc, work, ldwork)
+	
+	if side != 'L' && side != 'R'
+        throw(ArgumentError("illegal value of side"))
+		return -1
+	end
 
-                # W = W*V1, W = ldw by k, V1 is k by k
-                # og ztrmm 
-                work *= v1
-                
-                if m > k
-                    # W = W + C2^H * V2
-                    #og called zgemm
-                    work .+= (c2')*(v2)
-                end
-                
-                # W = W * T^H or W*T
-                # call ztrmm
+	if side == 'L'
+		nq = m
+		nw = n
+	else
+		nq = n
+		nw = m
+	end
 
-                if trans == 'N' # W = W*T^H
-                    work *= (t')
-                else
-                    work *= (t)
-                end
+    #do we need to include 'T' since ConjTrans is technically 'C'  ?
+	if trans != 'N' && trans != 'C' && trans != 'T'
+        throw(ArgumentError("illegal value of trans"))
+		return -2
+	end
 
-                if m > k #C2 = C2 - V2*W^H
-                    #call zgemm
-                    c2 .-= v2*(work')
-                end
+	if m < 0
+        throw(ArgumentError("illegal value of m"))
+		return -3
+	end
 
-                # w = w*v1^H
-                #call ztrmm
-                work *= (v1')
+	if n < 0
+        throw(ArgumentError("illegal value of n"))
+		return -4
+	end
 
-                # c1 = c1 - w^h
+	if k < 0 || k > nq
+        throw(ArgumentError("illegal value of k"))
+		return -5
+	end
 
-                for j in 1:k
-                    for i in 1:n
-                        c[j,i] = c[j,i] - conj(work[i,j])
-                    end
-                end
+	if ib < 0 
+        throw(ArgumentError("illegal value of ib"))
+		return -6
+	end
 
-            else 
-                if side == 'R' || side == 'r'
-                    c1 = @view c[:, 1:k]
-                    c2 = @view c[:, k+1:n]
-                    v1 = @view v[1:k,:]
-                    v2 = @view v[k+1:n,:]
+	if lda < max(1, nq) && nq > 0
+        throw(ArgumentError("illegal value of lda"))
+		return -8
+	end
 
-                    #W = C1
-                    for i in 1:m
-                        for j in 1:k
-                            work[i,j] = c[i,j]
-                        end
-                    end
+	if ldt < max(1,ib)
+        throw(ArgumentError("illegal value of ldt"))
+		return -10
+	end
 
-                    # w = w*v1
-                    #call ztrmm
-                    work = work*v1
+	if ldc < max(1,m) && m > 0
+        throw(ArgumentError("illegal value of ldc"))
+		return -12
+	end
 
-                    if n > k
-                        #call zgemm
-                        # w = w + c2*v2
-                        work .+= c2*v2
-                    end
-                    
-                    #w = w*t or w*t^H
+	if ldwork < max(1,nw) && nw > 0 # so work is at least n x n or m x ib so as long as n >= ib it ok
+        throw(ArgumentError("illegal value of ldwork"))
+		return -14
+	end
 
-                    if trans == 'C' # W = W*T^H
-                        work = work*(t')
-                    else
-                        work = work*t
-                    end
+	# quick return 
 
-                    if n > k
-                        # c2 = c2 - w*v2^H
-                        c2 .-= work*(v2')
-                    end
+	if m == 0 || n == 0 || k == 0
+		return
+	end
 
-                    #call ztrmm
-                    work = work*(v1')
+	if ((side == 'L' && trans != 'N') || (side == 'R' && trans == 'N'))
+		i1 = 1
+		i3 = ib
+		ibstop = k
+	else
+		i1 = div((k-1),ib)*ib + 1
+		i3 = -ib
+		ibstop = 1
+	end
+	#println("start is ", i1, " step is ", i3, " stop is ", ibstop)
+	
+	ic = 1
+	jc = 1
+	ni = n
+	mi = m
 
-                    #c1 = c1 - w
-                    for j in 1:k
-                        for i in 1:m
-                            c[i,j] = c[i,j] - work[i,j]
-                       end
-                    end
-                end
-            end
-        else
+	if side == 'L'
+		wwork = ones(eltype(A), n, ib)
+		ldw = n
+	else
+		wwork = ones(eltype(A), m, ib)
+		ldw = m
+	end
 
-            if side == 'L' || side == 'l'
-                c1 = @view c[1:m-k,:]
-                c2 = @view c[m-k+1:m,:]
-                v1 = @view v[1:ldv-k,:]
-                v2 = @view v[ldv-k+1:ldv,:]
-                
-                # w = c2^h
-                for i in 1:k
-                    for j in 1:n
-                        work[j,i] = conj(c2[i,j])
-                    end
-                end
+	for i in i1 : i3 : ibstop # start, step, stop
+		kb = min(ib, k-i+1)
+		#println("at i = ", i, " kb is ", kb)
 
-                work = work*v2
+		if side == 'L'
+			# apply to C[i:m, 1:n]
+			mi = m - i + 1
+			ic = i
+		else
+			# apply to C[1:m, i:n]
+			ni = n-i + 1
+			jc = i
+		end
 
-                if m > k
-                    #work = work + (c1')*v1
-                    work .+= (c1')*v1
-                end
+        cv = @view C[ic:m, jc:n]
 
-                if trans == 'N'
-                    work = work*(t')
-                else
-                    work = work*t
-                end
-
-                #c1 = c1 - v1*w^H
-                if m > k
-                    c1 .-= v1*(work')
-                end
-
-                work = work*(v2')
-
-                #c2 = c2 - w^H
-                for j in 1:k
-                    for i in 1:n
-                        c[m-k+j,i] = c[m-k+j,i] - conj(work[i,j])
-                    end
-                end
-            else 
-                if side == 'R' || side == 'r'
-                    c1 = @view c[:,1:n-k]
-                    c2 = @view c[:,n-k+1:n]
-                    v1 = @view v[1:ldv-k,:]
-                    v2 = @view v[ldv-k+1:ldv,:]
-
-                    # w = c2
-                    for i in 1:m
-                        for j in 1:k
-                            work[i,j] = c2[i,j]
-                        end
-                    end
-
-                    work = work*v2
-
-                    if n > k
-                        #work = work + c1*v1
-                        work .+= c1*v1
-                    end
-
-                    if trans == 'C'
-                        work = work*(t')
-                    else
-                        work = work*t
-                    end
-                    
-                    #c1 = c1 - w*v1^H
-                    if n > k
-                        c1 .-= work*(v1')
-                    end
-
-                    work = work*(v2')
-
-                    #c2 = c2-w
-                    for j in 1:k
-                        for i in 1:m
-                            c[i,n-k+j] = c[i,n-k+j] - work[i,j]
-                        end
-                    end
-                end
-            end
-        end
-    else 
-        if storev == 'R'
-            if direct == 'F'
-                if side == 'L'
-                    v1 = @view v[:, 1:k]
-                    v2 = @view v[:, k+1:m]
-                    c1 = @view c[1:k, :]
-                    c2 = @view c[k+1:m, :]
-
-                    #w = c1^h
-                    for i in 1:k
-                        for j in 1:n
-                            work[j,i] = conj(c1[i,j])
-                        end
-                    end
-
-                    work = work*(v1')
-
-                    if m > k
-                        #work = work + (c2')*(v2')
-                        work .+= (c2')*(v2')
-                    end
-
-                    if trans == 'N'
-                        work = work*(t')
-                    else
-                        work = work*t
-                    end
-
-                    #c2 = c2 - v2^h*w^h
-                    if m > k
-                        c2 .-= (v2')*(work')
-                    end
-
-                    work = work*v1
-
-                    #c1 = c1 - w^h
-                    for j in 1:k
-                        for i in 1:n
-                            c[j,i] = c[j,i] - conj(work[i,j])
-                        end
-                    end
-
-                else 
-                    if side == 'R' || side == 'r'
-                        v1 = @view v[:, 1:k]
-                        v2 = @view v[:, k+1:n]
-                        c1 = @view c[:, 1:k]
-                        c2 = @view c[:, k+1:n]
-
-                        #w = c1
-                        for i in 1:m
-                            for j in 1:k
-                                work[i,j] = c1[i,j]
-                            end
-                        end
-
-                        work = work*(v1')
-
-                        if n > k
-                            #work = work + c2*(v2')
-                            work .+= c2*(v2')
-                        end
-
-                        if trans == 'C'
-                            work = work*(t')
-                        else
-                            work = work*t
-                        end
-
-                        #c2 = c2 - w*v2
-                        if n > k
-                            c2 .-= work*v2
-                        end
-
-                        work = work*v1
-                        
-                        #c1 = c1 - w
-
-                        for j in 1:k
-                            for i in 1:m
-                                c[i,j] = c[i,j] - work[i,j]
-                            end
-                        end
-
-                    end
-                end
-            else # direct = B
-                if side == 'L' || side == 'l'
-                    v1 = @view v[:, 1:m-k]
-                    v2 = @view v[:, m-k+1:m]
-                    c1 = @view c[1:m-k,:]
-                    c2 = @view c[m-k+1:m,:]
-
-                    #w = c2^h
-                    for i in 1:k
-                        for j in 1:n
-                            work[j,i] = conj(c2[i,j])
-                        end
-                    end
-
-                    work = work * (v2')
-                    
-                    if m > k
-                        #work = work + (c1')*(v1')
-                        work .+= (c1')*(v1')
-                    end
-
-                    if trans == 'N'
-                        work = work*(t')
-                    else
-                        work = work*t
-                    end
-
-                    #c1 = c1 - v1^h * w^h
-                    if m > k
-                        c1 .-= (v1')*(work')
-                    end
-
-                    work = work*v2
-                    
-                    #c2 = c2 - w^h
-                    for j in 1:k
-                        for i in 1:n
-                            c[m-k+j,i] = c[m-k+j,i] - conj(work[i,j])
-                        end
-                    end
-
-                else 
-                    if side == 'R'
-                        v1 = @view v[:, 1:n-k]
-                        v2 = @view v[:, n-k+1:n]
-                        c1 = @view c[:, 1:n-k]
-                        c2 = @view c[:,n-k+1:n]
-
-                        #w = c2
-                        for i in 1:m
-                            for j in 1:k
-                                work[i,j] = c2[i,j]
-                            end
-                        end
-
-                        work = work * (v2')
-
-                        if n > k
-                            #work = work + c1*(v1')
-                            work .+= c1*(v1')
-                        end
-
-                        if trans == 'C'
-                            work = work*(t')
-                        else
-                            work = work*t
-                        end
-
-                        #c1 = c1 - w*v1
-                        if n > k
-                            c1 .-= work*v1
-                        end
-
-                        work = work*v2
-
-                        #c2 = c2 - w
-                        for j in 1:k
-                            for i in 1:m
-                                c[i,n-k+j] = c[i,n-k+j] - work[i,j]
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
-
-    return
-end 
+        zlarfbv1(side, trans, 'F', 'C', mi, ni, kb, (@view A[i:lda, i:i+kb-1]), lda-i+1, (@view T[1:kb, i:i+kb-1]), kb, cv, ldc, (@view wwork[:, 1:kb]), ldw)
+        #zlarfbalt(side, trans, 'F', 'C', mi, ni, kb, A,i,i, (@view T[1:kb, i:i+kb-1]), C,ic, jc , (@view work[:, 1:kb]), ldwork)
+	end
+end
