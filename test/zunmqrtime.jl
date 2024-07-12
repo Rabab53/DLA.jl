@@ -43,20 +43,20 @@ for T in [Float64, Float32, ComplexF64, ComplexF32]
             rlvj1 = Float64[]
             rjvl1 = Float64[]
             
-            for m in [512, 1024, 2048]#, 4096, 8192, 16384, 32768]
+            for m in [16384, 32768]#[512, 1024, 2048, 4096, 8192, 16384, 32768]
                 println("m = ", m)
                 n = m
                 k = m
 
                 push!(xvals, m)
 
-                C = CuArray(rand(T,m,n))
+                C = rand(T,m,n)
 
                 if side == 'L'
-                    A = CuArray(rand(T,m,k))
+                    A = rand(T,m,k)
                     lda = m
                     ldw = n
-                    work = CuArray(rand(T,n,n))
+                    work = rand(T,n,n)
                 else
                     A = rand(T,n,k)
                     lda = n
@@ -64,7 +64,7 @@ for T in [Float64, Float32, ComplexF64, ComplexF32]
                     work = rand(T,m,ib)
                 end
                 
-                Tau = CuArray(rand(T,ib,k))
+                Tau = rand(T,ib,k)
                 Tau1 = rand(T,k)
                 A1 = Array(A)
                 #CUSOLVER.geqrf!(A, Tau)
@@ -76,15 +76,13 @@ for T in [Float64, Float32, ComplexF64, ComplexF32]
                 Tau2 = deepcopy(Tau)
 
                 A3 = deepcopy(A1)
-                Tau3 = deepcopy(Tau1)
-                C3 = Array(C)
                 
                 C4 = deepcopy(C)
                 
                if (T == Float64 || T == Float32) && trans == 'C'
                     #LAPACK
                     s = @belapsed  unmqr!($T, $side, 'T', $A1, $Tau1, $C0) samples = 7 evals = 1
-                    sm = @ballocated  unmqr!($T, $side, 'T', $A3, $Tau3, $C3) samples = 7 evals = 1
+                    sm = @ballocated  unmqr!($T, $side, 'T', $A1, $Tau1, $C0) samples = 7 evals = 1
                     @show s, sm
                     push!(y,s)
                     push!(ym, sm / 10^3)
@@ -92,20 +90,20 @@ for T in [Float64, Float32, ComplexF64, ComplexF32]
                     A1 = CuArray(A1)
                     Tau1 = CuArray(Tau1)
                     C0 = CuArray(C0)
-                    C3 = CuArray(C3)
-                    A3 = CuArray(A3)
-                    Tau3 = CuArray(Tau3)
+
                     #CU
                     s1 = @belapsed  CUSOLVER.ormqr!($side, 'T', $A1, $Tau1, $C0) samples = 7 evals = 1
-                    sm1 = @ballocated  CUSOLVER.ormqr!($side, 'T', $A3, $Tau3, $C3) samples = 7 evals = 1
+                    sm1 = @ballocated  CUSOLVER.ormqr!($side, 'T', $A1, $Tau1, $C0) samples = 7 evals = 1
                     @show s1, sm1
                     push!(y1,s1)
                     push!(ym1, sm1 / 10^3)
-                
+                    CUDA.unsafe_free!(A1)
+                    CUDA.unsafe_free!(Tau1)
+                    CUDA.unsafe_free!(C0)
                 else
                     #LAPACK
                     s = @belapsed unmqr!($T, $side, $trans, $A1, $Tau1, $C0) samples = 7 evals = 1
-                    sm = @ballocated unmqr!($T, $side, $trans, $A3, $Tau3, $C3) samples = 7 evals = 1
+                    sm = @ballocated unmqr!($T, $side, $trans, $A3, $Tau1, $C0) samples = 7 evals = 1
                     @show s, sm
                     push!(y,s)
                     push!(ym, sm / 10^3)
@@ -114,46 +112,47 @@ for T in [Float64, Float32, ComplexF64, ComplexF32]
                     A1 = CuArray(A1)
                     Tau1 = CuArray(Tau1)
                     C0 = CuArray(C0)
-                    C3 = CuArray(C3)
-                    A3 = CuArray(A3)
-                    Tau3 = CuArray(Tau3)
                     #CU
                     s1 = @belapsed  CUSOLVER.ormqr!($side, $trans, $A1, $Tau1, $C0) samples = 7 evals = 1
-                    sm1 = @ballocated  CUSOLVER.ormqr!($side, $trans, $A3, $Tau3, $C3) samples = 7 evals = 1
+                    sm1 = @ballocated  CUSOLVER.ormqr!($side, $trans, $A1, $Tau1, $C0) samples = 7 evals = 1
                     @show s1, sm1
                     push!(y1,s1)
                     push!(ym1, sm1 / 10^3)
-
+                    CUDA.unsafe_free!(A1)
+                    CUDA.unsafe_free!(Tau1)
+                    CUDA.unsafe_free!(C0)
                 end
-
-                #Julia cuda 
-                s1j = @belapsed zunmqrv0g($side, $trans, $m, $n, $k, $ib, $A, $lda, $Tau, $ib, $C, $m, $work, $ldw) samples = 7 evals = 1
-                s1jm = @ballocated zunmqrv0g($side, $trans, $m, $n, $k, $ib, $A2, $lda, $Tau2, $ib, $C4, $m, $work, $ldw) samples = 7 evals = 1
-                @show s1j, s1jm
-                push!(y1j, s1j)
-                push!(y1jm, s1jm/10^3)
+ 
 
                 #Julia multithreaded
-                C = Array(C)
-                C4 = Array(C4)
-                Tau = Array(Tau)
-                Tau2 = Array(Tau2)
-                A = Array(A)
-                A2 = Array(A2)
-                work = Array(work)
                 s0j = @belapsed zunmqrv0($side, $trans, $m, $n, $k, $ib, $A, $lda, $Tau, $ib, $C, $m, $work, $ldw) samples = 7 evals = 1
-                s0jm = @ballocated zunmqrv0($side, $trans, $m, $n, $k, $ib, $A2, $lda, $Tau2, $ib, $C4, $m, $work, $ldw) samples = 7 evals = 1
+                s0jm = @ballocated zunmqrv0($side, $trans, $m, $n, $k, $ib, $A, $lda, $Tau, $ib, $C, $m, $work, $ldw) samples = 7 evals = 1
                 @show s0j, s0jm
                 push!(y0j, s0j)
                 push!(y0jm, s0jm/10^3)
 
+                
+                A = CuArray(A)
+                Tau = CuArray(Tau)
+                C = CuArray(C)
+                work = CuArray(work)
+                #Julia cuda 
+                s1j = @belapsed zunmqrv0g($side, $trans, $m, $n, $k, $ib, $A, $lda, $Tau, $ib, $C, $m, $work, $ldw) samples = 7 evals = 1
+                s1jm = @ballocated zunmqrv0g($side, $trans, $m, $n, $k, $ib, $A, $lda, $Tau, $ib, $C, $m, $work, $ldw) samples = 7 evals = 1
+                @show s1j, s1jm
+                push!(y1j, s1j)
+                push!(y1jm, s1jm/10^3)
+
+                CUDA.unsafe_free!(A)
+                CUDA.unsafe_free!(Tau)
+                CUDA.unsafe_free!(C)
 
                 push!(rlvj, s/s0j)
                 push!(rjvl, s0j/s)
 
                 push!(rlvj1, s1/s1j)
                 push!(rjvl1, s1j/s1)
-
+                CUDA.reclaim()
             end
 
             xvals = Int.(xvals)
