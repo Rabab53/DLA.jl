@@ -3,6 +3,7 @@ using BenchmarkTools
 using Plots
 
 include("zlarfb_v3.jl")
+include("zlarfbalt.jl")
 
 function zunmqrv0(side, trans, m, n, k, ib, A, lda, T, ldt, C, ldc, work, ldwork)
 	
@@ -97,7 +98,6 @@ function zunmqrv0(side, trans, m, n, k, ib, A, lda, T, ldt, C, ldc, work, ldwork
 
 	for i in i1 : i3 : ibstop # start, step, stop
 		kb = min(ib, k-i+1)
-
 		#println("at i = ", i, " kb is ", kb)
 
 		if side == 'L'
@@ -113,6 +113,6 @@ function zunmqrv0(side, trans, m, n, k, ib, A, lda, T, ldt, C, ldc, work, ldwork
         cv = @view C[ic:m, jc:n]
 
         zlarfbv3(side, trans, 'F', 'C', mi, ni, kb, (@view A[i:lda, i:i+kb-1]), lda-i+1, (@view T[1:kb, i:i+kb-1]), kb, cv, ldc, (@view wwork[:, 1:kb]), ldw)
-        #zlarfbalt(side, trans, 'F', 'C', mi, ni, kb, A,i,i,(@view T[1:kb, i:i+kb-1]), C,ic, jc , wwork, ldw)
+        #zlarfbalt(side, trans, 'F', 'C', mi, ni, kb, A,i,i, (@view T[1:kb, i:i+kb-1]), C,ic, jc , (@view work[:, 1:kb]), ldwork)
 	end
 end
