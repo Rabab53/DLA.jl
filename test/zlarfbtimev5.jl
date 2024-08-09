@@ -15,12 +15,8 @@ t = 40
 BLAS.set_num_threads(Threads.nthreads())
 
 for T in [Float64, ComplexF64, Float32, ComplexF32]
-    println(T)
-
     for k in [64, 128]
         for trans in ['C', 'N']
-
-            println("k is ", k, " trans is ", trans)
 
             xvals = Float64[]
             y = Float64[]
@@ -46,17 +42,11 @@ for T in [Float64, ComplexF64, Float32, ComplexF32]
             rlvd = Float64[]
             rlvf = Float64[]
             
-            #k = 128
-            #trans = 'N'
-            
             for m in [512, 1024, 2048, 4096, 8192, 16384, 32768, 65536]
-                println("m = ", m)
                 n = m
                 
                 push!(xvals, m)
                 
-                #T = Float64
-            
                 storev = 'C'
                 direct = 'F'
                 side = 'L'
@@ -170,7 +160,8 @@ for T in [Float64, ComplexF64, Float32, ComplexF32]
             
             end
             
-            # plotting, can do later too if needed
+            """
+            # plotting
 
             xvals = Int.(xvals)
             xvals = string.(xvals)
@@ -191,13 +182,6 @@ for T in [Float64, ComplexF64, Float32, ComplexF32]
             plot!(q, xvals, y3m, marker=:star8, label="Internal Function")
             savefig(q, "larfb memory type=$T t=$t k=$k trans=$trans")
             
-            """
-            p5 = plot()
-            plot!(p5, legend=:topleft, xlabel="Matrix Size (n x n)", ylabel = "julia / lapack", title="larfb Time Ratios SMultithreaded")
-            plot!(p5, xvals, rdvl, marker=:circle, label="Multiple Dispatch")
-            plot!(p5, xvals, rfvl, marker=:circle, label="Internal Function")
-            savefig(p5, "larfb time ratios type=$T t=$t k=$k trans=$trans")
-            """
             rats = [rlvd; rlvf]
             b1 = minimum(rats) - 0.15
             b2 = maximum(rats) + 0.15
@@ -206,7 +190,7 @@ for T in [Float64, ComplexF64, Float32, ComplexF32]
                             label=["Multiple Dispatch" "Internal Function"], 
                             xlabel="Matrix Size (n x n)", ylabel="lapack / julia", title="time ratios")
             savefig(p1, "larfb time ratio type=$T t=$t k=$k trans=$trans")
-
+            """
 
         end
     end

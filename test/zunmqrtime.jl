@@ -4,21 +4,18 @@ using JLD2
 using Plots
 using StatsPlots
 
-include("zunmqr_v0.jl")
-include("zunmqrwrap.jl")
+include("../src/zunmqr_v0.jl")
+include("../src/zunmqrwrap.jl")
 
 #BLAS.set_num_threads(1) # to make sequential
 BLAS.set_num_threads(Threads.nthreads())
 t = 40
 
-for T in [Float64, Float32, ComplexF64, ComplexF32]
-    println(T)
-    
+for T in [Float64, Float32, ComplexF64, ComplexF32]    
     side = 'L'
 
     for ib in [64,128]
         for trans in ['C', 'N']
-            println("ib is ", ib, " trans is ", trans)
 
             xvals = Float64[]
 
@@ -32,7 +29,6 @@ for T in [Float64, Float32, ComplexF64, ComplexF32]
             rjvl = Float64[]
             
             for m in [512, 1024, 2048, 4096, 8192, 16384, 32768]
-                println("m = ", m)
                 n = m
                 k = m
 
@@ -88,6 +84,9 @@ for T in [Float64, Float32, ComplexF64, ComplexF32]
                 push!(rlvj, s/s0)
                 push!(rjvl, s0/s)
             end
+
+            """
+            #plotting
             
             xvals = Int.(xvals)
             xvals = string.(xvals)
@@ -114,6 +113,8 @@ for T in [Float64, Float32, ComplexF64, ComplexF32]
                 label=["lapack / julia" "julia / lapack"],
                 xlabel="Matrix Size (n x n)", ylabel="ratio", title="unmqr time ratio")
             savefig(p1, "unmqr time ratio type=$T t=$t ib=$ib trans=$trans")
+            """
+
         end
     end
 end
