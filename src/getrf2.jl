@@ -3,7 +3,8 @@ using LinearAlgebra: libblastrampoline, BlasInt, require_one_based_indexing
 using LinearAlgebra.LAPACK: liblapack, chkstride1, chklapackerror
 using LinearAlgebra.BLAS: @blasfunc
 using BenchmarkTools
-include("zgeqrt.jl")
+
+include("zlarfg.jl")
 
 function lapack_getrf2!(::Type{T}, A::AbstractMatrix{T}, ipiv::AbstractVector{Int}) where {T<:Number}
     m,n = size(A)
@@ -32,6 +33,30 @@ function lapack_getrf2!(::Type{T}, A::AbstractMatrix{T}, ipiv::AbstractVector{In
     end
 end
 
+"""
+    getrf2!(A::AbstractMatrix{T}, ipiv::AbstractVector{Int}, info::Ref{Int})
+
+Computes an LU factorization of a general M-by-N matrix A using partial pivoting with row exchanges.
+The factorization has form 
+    A = P * L * U
+where P is a permutation matrix, L is lower triangula with unit diagonal elements (lower trapezoidal if m > n),
+and U is upper triangular (upper trapezoidal if m < n)
+
+This is the recursive form of the algorithm. 
+
+# Arguments
+- 'A' : matrix, dimension (m,n)
+    - On entry, the m-by-n matrix to be factored
+    - On exit, the factors L and U from the factorization A = P * L * U; the unit diagonal elements of L are not stored
+
+- 'ipiv' : dimension (min(m,n))
+    - the pivot indicies; for 1 <= i <= min(m,n), row i of the matrix was interchanged with row ipiv[i]
+
+- 'info' : 
+    - =0: successful exit
+    - <0: if info = -i, the i-th argument had an illegal value
+    - >0: if info = i, U[i,i] is exactly zero. The factorization has been completed, but the factor U is exactly singular and division by zero will occur if it is used to solve a system of equations
+"""
 function getrf2!(A::AbstractMatrix{T}, ipiv::AbstractVector{Int}, info::Ref{Int}) where T
     m, n = size(A)
 
@@ -57,13 +82,15 @@ function getrf2!(A::AbstractMatrix{T}, ipiv::AbstractVector{Int}, info::Ref{Int}
     end
 
     if m == 1
+        
         ipiv[1] = 1
+
         if A[1,1] == zero(T)
             info[] = 1
             return
         end
+
     elseif n == 1
-        #sfmin = eps(eltype(real(A[1,1])))
         sfmin = lamch(eltype(real(A[1,1])), 'S')
 
         dmax = abs(real(A[1,1])) + abs(imag(A[1,1]))
@@ -79,7 +106,6 @@ function getrf2!(A::AbstractMatrix{T}, ipiv::AbstractVector{Int}, info::Ref{Int}
         ipiv[1] = idamax
 
         if A[idamax,1] != zero(T)
-
             #Apply the interchange
             if idamax != 1
                 temp = A[1,1]
@@ -90,7 +116,6 @@ function getrf2!(A::AbstractMatrix{T}, ipiv::AbstractVector{Int}, info::Ref{Int}
             #Compute element 2:m of the column
             if abs(A[1, 1]) >= sfmin
                 BLAS.scal!(m-1, one(T)/A[1,1], view(A, 2:m, 1), 1)
-                #view(A, 2:m, 1) .*= (one(T)/A[1,1])
             else
                 view(A, 2:m, 1) ./= A[1,1]
             end
@@ -100,7 +125,6 @@ function getrf2!(A::AbstractMatrix{T}, ipiv::AbstractVector{Int}, info::Ref{Int}
         end
     else
         #use recursive code
-        #n1 = min(m, n) /2
         n1 = div(min(m,n), 2)
         n2 = n - n1
 
@@ -123,14 +147,10 @@ function getrf2!(A::AbstractMatrix{T}, ipiv::AbstractVector{Int}, info::Ref{Int}
         laswp(view(A, :, n1+1:n), Int(1), Int(n1), ipiv, Int(1))
 
         # Solve A12
-        # solves A11 * X = A12 --> A12 = (A11)^-1 * A12
         LinearAlgebra.BLAS.trsm!('L', 'L', 'N', 'U', one(T), (@view A[1:n1, 1:n1]), (@view A[1:n1, n1+1:n]))
 
         # Update A22
-        # updates A22 -= A21 * A12 
         LinearAlgebra.BLAS.gemm!('N', 'N', -one(T), view(A, n1+1:m, 1:n1), view(A, 1:n1, n1+1:n), one(T), view(A, n1+1:m, n1+1:n))
-        #LinearAlgebra.generic_matmatmul!(view(A, n1+1:m, n1+1:n), 'N','N', 
-        #view(A, n1+1:m, 1:n1), view(A, 1:n1, n1+1:n), LinearAlgebra.MulAddMul(-one(T), one(T)))
 
         #Factor A22
         iinfo = Ref{Int}(0)
@@ -174,13 +194,11 @@ function laswp(A::AbstractMatrix{T}, first::Integer, last::Integer, ipiv::Abstra
 
     if n32 != 0
         for j in 1:32:n32
-            # @show j, typeof(j)
             ix = ix0
             for i in i1:inc:i2
                 ip = ipiv[ix]
                 if ip != i
                     for k in j:j+31
-                        # @show i, k, ip, j, typeof(i), typeof(k), typeof(ip), typeof(j)
                         temp = A[i, k]
                         A[i, k] = A[ip, k]
                         A[ip, k] = temp

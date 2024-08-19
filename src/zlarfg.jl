@@ -31,9 +31,6 @@ function zlarfg(n, alpha, x, incx, tau)
             
             while true
                 knt += 1
-                # change to internal
-                #LinearAlgebra.rmul!(x, rsafmn)
-                #LinearAlgebra.generic_mul!(x, rsafmn, x, LinearAlgebra.MulAddMul(one, zero0))
                 x .*= rsafmn
                 beta *= rsafmn
                 alphr *= rsafmn
@@ -51,8 +48,6 @@ function zlarfg(n, alpha, x, incx, tau)
         end
 
         tau = (beta - alpha) / beta
-        #LinearAlgebra.rmul!(x, (one / (alpha-beta)))
-        #LinearAlgebra.generic_mul!(x, one / (alpha-beta), x, LinearAlgebra.MulAddMul(one, zero0))
         x .*= (one / (alpha-beta))
 
         for j in 1:knt
@@ -65,23 +60,44 @@ function zlarfg(n, alpha, x, incx, tau)
     return alpha, tau
 end
 
-# currently only handles float related procedures
+"""
+    lamch(::Type{T}, cmach) where{T<: Number}
+
+Determines single / double precision machine parameters
+
+# Arguments
+- T : type, currently only tested Float32 and Float64
+- 'cmach' : specifies the value to be returned by lamch
+    - = 'E': returns eps
+    - = 'S': returns sfmin
+    - = 'P': returns eps*base
+    
+    - where
+        - eps = relative machine precision
+        - sfmin = safe min, such that 1/sfmin does not overflow
+        - base = base of the machine
+"""
 function lamch(::Type{T}, cmach) where{T<: Number}
-    ep = eps(T)
+    ep = eps(T) 
+    one = oneunit(T)
+    rnd = one
+
+    if one == rnd
+        ep *= 0.5
+    end
 
     if cmach == 'E'
         return ep
+    elseif cmach == 'S'
+        sfmin = floatmin(T)
+        small = one / floatmax(T)
+
+        if small >= sfmin
+            sfmin = small*(one + ep)
+        end
+        return sfmin
+    else # assume cmach = 'P'
+        # assume base of machine is 2
+        return ep*2
     end
-
-    #assume cmach = 'S'
-
-    one = oneunit(T)
-    sfmin = floatmin(T)
-    small = one / floatmax(T)
-
-    if small >= sfmin
-        return small*(one + ep)
-    end
-
-    return sfmin
 end
