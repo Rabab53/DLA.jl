@@ -1,4 +1,4 @@
-export CompletePivoting, RowMaximum, RowNonZero, NoPivot, lupivottype, lu!, getrf2!, laswp, geru!
+export CompletePivoting, RowMaximum, RowNonZero, NoPivot, lupivottype, lu!, getrf2!, laswp, geru!, getc2!
 
 struct CompletePivoting <: PivotingStrategy end
 

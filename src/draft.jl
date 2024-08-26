@@ -188,13 +188,16 @@ L * U ≈ B[p, q]
 norm(L * U) ≈ norm(B[p, q])
 
 
+
+#example
+
 using Revise
 using LinearAlgebra
 using DLA
-A = rand(20, 20)
+A = rand(10, 20)
 B = copy(A);
 DLA_A = DLAMatrix{Float64}(A)
-F =LinearAlgebra.lu!(DLA_A, CompletePivoting())
+F =getc2!(DLA_A, CompletePivoting())
 m, n = size(F.factors)
 L = tril(F.factors[1:m, 1:min(m,n)])
 for i in 1:min(m,n); L[i,i] = 1 end
@@ -203,3 +206,5 @@ p = LinearAlgebra.ipiv2perm(F.ipiv,m)
 q = LinearAlgebra.ipiv2perm(F.jpiv, n)
 L * U ≈ B[p, q]
 norm(L * U) ≈ norm(B[p, q])
+
+
