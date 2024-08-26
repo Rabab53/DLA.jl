@@ -1,0 +1,13 @@
+A = rand(10, 10)
+DLA_A = DLAMatrix(A)
+lu!(DLA_A) #This will call the getrf Julia code which is the LAPACK code
+
+A = rand(10, 10)
+DLA_A = DLAMatrix(A)
+lu!(DLA_A, NoPivot()) #This will call generic lu code in julia
+
+What is missing: 
+1. lu
+2. lu for compelet pivoting using Julia
+3. solve div
+4. factors L and U
