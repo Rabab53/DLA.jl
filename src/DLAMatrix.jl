@@ -20,6 +20,7 @@ Base.getindex(A::DLAMatrix, i::Integer, j::Integer) = A.data[i,j]
 Base.setindex!(A::DLAMatrix, v, i::Integer) = A.data[i] = v
 Base.setindex!(A::DLAMatrix, v, i::Integer, j::Integer) = A.data[i,j] = v
 
+#This temp
 LinearAlgebra.BLAS.axpy!(α::Number, x::DLAMatrix, y::DLAMatrix) = LinearAlgebra.BLAS.axpy!(α, x.data, y.data)
 LinearAlgebra.BLAS.gemv!(tA::Char, α::Number, A::DLAMatrix, x::DLAMatrix, β::Number, y::DLAMatrix) = LinearAlgebra.BLAS.gemv!(tA, α, A.data, x.data, β, y.data)
 LinearAlgebra.BLAS.gemm!(tA::Char, tB::Char, α::Number, A::DLAMatrix, B::DLAMatrix, β::Number, C::DLAMatrix) = LinearAlgebra.BLAS.gemm!(tA, tB, α, A.data, B.data, β, C.data)
