@@ -3,7 +3,7 @@ using BenchmarkTools
 using Plots
 using StatsPlots
 using JLD2
-using CUDA
+using AMDGPU
 include("../src/zlarfbwrap.jl")
 include("../src/zlarfb_v0.jl")
 include("../src/zlarfb_v1.jl")
@@ -61,33 +61,33 @@ for T in [Float64]#[Float64, ComplexF64, Float32, ComplexF32]
                 direct = 'F'
                 side = 'L'
                                 
-                C = CuArray(rand(T, m, n))
-                Tau = CuArray(rand(T, k, k))
+                C = ROCArray(rand(T, m, n))
+                Tau = ROCArray(rand(T, k, k))
             
                 if side == 'L'
-                    work = CuArray(rand(T,n,k))
+                    work = ROCArray(rand(T,n,k))
                     ldw = n
             
                     if storev == 'C'
-                        V = CuArray(rand(T,m,k))
+                        V = ROCArray(rand(T,m,k))
                         ldv = m
                         dv = m
                     else #storev = R
-                        V = CuArray(rand(T,k,m))
+                        V = ROCArray(rand(T,k,m))
                         ldv = k
                         dv = m
                     end
             
                 else #side = 'R'
-                    work = CuArray(rand(T, m, k))
+                    work = ROCArray(rand(T, m, k))
                     ldw = m
             
                     if storev == 'C'
-                        V = CuArray(rand(T,n,k))
+                        V = ROCArray(rand(T,n,k))
                         ldv = n
                         dv = n
                     else #storev = R
-                        V = CuArray(rand(T,k,n))
+                        V = ROCArray(rand(T,k,n))
                         ldv = k
                         dv = n
                     end

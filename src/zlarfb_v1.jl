@@ -7,13 +7,13 @@ function zlarfbv1(side, trans, direct, storev, m, n, k, v, ldv, t, ldt, c, ldc, 
 
     if storev == 'C'
         if direct == 'F'
-            t = t
+	     t = (t)
 
             if side == 'L'
-                c1 = @view c[1:k,:]
-                c2 = @view c[k+1:m,:]
-                v1 = @view v[1:k,:] #unit lower triangular
-                v2 = @view v[k+1:m,:]
+		c1 = (@view c[1:k,:])
+		c2 = (@view c[k+1:m,:])
+		v1 = (@view v[1:k,:]) #unit lower triangular
+		v2 = (@view v[k+1:m,:])
             
                 # W = C1^H
                 # og copied and conjugated by row w/ zcopy
@@ -65,10 +65,10 @@ function zlarfbv1(side, trans, direct, storev, m, n, k, v, ldv, t, ldt, c, ldc, 
 
             else 
                 if side == 'R' || side == 'r'
-                    c1 = @view c[:, 1:k]
-                    c2 = @view c[:, k+1:n]
-                    v1 = @view v[1:k,:]
-                    v2 = @view v[k+1:n,:]
+		     c1 = (@view c[:, 1:k])
+	             c2 = (@view c[:, k+1:n])
+		     v1 = (@view v[1:k,:])
+		     v2 = (@view v[k+1:n,:])
 
                     #W = C1
                     """
@@ -122,10 +122,10 @@ function zlarfbv1(side, trans, direct, storev, m, n, k, v, ldv, t, ldt, c, ldc, 
             t = LowerTriangular(t)
 
             if side == 'L' || side == 'l'
-                c1 = @view c[1:m-k,:]
-                c2 = @view c[m-k+1:m,:]
-                v1 = @view v[1:ldv-k,:]
-                v2 = @view v[ldv-k+1:ldv,:]
+		c1 = (@view c[1:m-k,:])
+                c2 = (@view c[m-k+1:m,:])
+                v1 = (@view v[1:ldv-k,:])
+                v2 = (@view v[ldv-k+1:ldv,:])
                 
                 # w = c2^h
                 """
@@ -169,10 +169,10 @@ function zlarfbv1(side, trans, direct, storev, m, n, k, v, ldv, t, ldt, c, ldc, 
                 c2 = work'
             else 
                 if side == 'R' || side == 'r'
-                    c1 = @view c[:,1:n-k]
-                    c2 = @view c[:,n-k+1:n]
-                    v1 = @view v[1:ldv-k,:]
-                    v2 = @view v[ldv-k+1:ldv,:]
+	           c1 = (@view c[:,1:n-k])
+		   c2 = (@view c[:,n-k+1:n])
+		   v1 = (@view v[1:ldv-k,:])
+		   v2 = (@view v[ldv-k+1:ldv,:])
 
                     # w = c2
                     """
@@ -223,10 +223,10 @@ function zlarfbv1(side, trans, direct, storev, m, n, k, v, ldv, t, ldt, c, ldc, 
                 t = t
                 
                 if side == 'L'
-                    v1 = @view v[:, 1:k]
-                    v2 = @view v[:, k+1:m]
-                    c1 = @view c[1:k, :]
-                    c2 = @view c[k+1:m, :]
+		   v1 = (@view v[:, 1:k])
+	           v2 = (@view v[:, k+1:m])
+		   c1 = (@view c[1:k, :])
+		   c2 = (@view c[k+1:m, :])
 
                     #w = c1^h
                     """
@@ -270,10 +270,10 @@ function zlarfbv1(side, trans, direct, storev, m, n, k, v, ldv, t, ldt, c, ldc, 
                 else 
                     if side == 'R' || side == 'r'
                         
-                        v1 = @view v[:, 1:k]
-                        v2 = @view v[:, k+1:n]
-                        c1 = @view c[:, 1:k]
-                        c2 = @view c[:, k+1:n]
+		       v1 = (@view v[:, 1:k])
+	               v2 = (@view v[:, k+1:n])
+	               c1 = (@view c[:, 1:k])
+		       c2 = (@view c[:, k+1:n])
 
                         #w = c1
                         """
@@ -322,10 +322,10 @@ function zlarfbv1(side, trans, direct, storev, m, n, k, v, ldv, t, ldt, c, ldc, 
                 t = LowerTriangular(t)
 
                 if side == 'L' || side == 'l'
-                    v1 = @view v[:, 1:m-k]
-                    v2 = @view v[:, m-k+1:m]
-                    c1 = @view c[1:m-k,:]
-                    c2 = @view c[m-k+1:m,:]
+		    v1 = (@view v[:, 1:m-k])
+		    v2 = (@view v[:, m-k+1:m])
+		    c1 = (@view c[1:m-k,:])
+		    c2 = (@view c[m-k+1:m,:])
 
                     """
                     #w = c2^h
@@ -370,10 +370,10 @@ function zlarfbv1(side, trans, direct, storev, m, n, k, v, ldv, t, ldt, c, ldc, 
 
                 else 
                     if side == 'R'
-                        v1 = @view v[:, 1:n-k]
-                        v2 = @view v[:, n-k+1:n]
-                        c1 = @view c[:, 1:n-k]
-                        c2 = @view c[:,n-k+1:n]
+			v1 = (@view v[:, 1:n-k])
+	                v2 = (@view v[:, n-k+1:n])
+		        c1 = (@view c[:, 1:n-k])
+	                c2 = (@view c[:,n-k+1:n])
 
                         #w = c2
                         """
