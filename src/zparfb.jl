@@ -5,7 +5,6 @@ using LinearAlgebra.BLAS: @blasfunc
 using BenchmarkTools
 
 include("zpamm.jl")
-include("axpy.jl")
 
 function lapack_tprfb!(::Type{T}, side::AbstractChar, trans::AbstractChar, direct::AbstractChar, storev::AbstractChar,
     l::Int64, V::AbstractMatrix{T}, Tee::AbstractMatrix{T}, A::AbstractMatrix{T}, B::AbstractMatrix{T}) where {T<: Number}
@@ -142,17 +141,24 @@ function zparfb(side, trans, direct, storev, m1, n1, m2, n2, k, l,
     one0 = oneunit(eltype(A1))
     zero0 = zero(eltype(A1))
 
+    if trans == 'N'
+        tfun = identity
+    else
+        tfun = adjoint
+    end
+
+
     if direct == 'F'
         if side == 'L'
             # Form H * A or H^H * A 
             # w =  A1 + op(V) * A2
             zpamm('W', 'L', storev, k, n1, m2, l, A1, lda1, A2, lda2, V, ldv, work, k)
 
-            LinearAlgebra.BLAS.trmm!('L', 'U', trans, 'N', one0, (@view T[1:k, 1:k]), (@view work[1:k, 1:n2]))
+            LinearAlgebra.generic_trimatmul!((@view work[1:k, 1:n2]), 'U', 'N', tfun, (@view T[1:k, 1:k]), (@view work[1:k, 1:n2]))
 
             #A1 = A1 - w
             for j in 1:n1
-                axpy!(-one0, (@view work[1:k, j]), (@view A1[1:k, j]))
+                LinearAlgebra.axpy!(-one0, (@view work[1:k, j]), (@view A1[1:k, j]))
             end
 
             #a2 = A2 - op(V) * w
@@ -164,11 +170,12 @@ function zparfb(side, trans, direct, storev, m1, n1, m2, n2, k, l,
             zpamm('W', 'R', storev, m1, k, n2, l, A1, lda1, A2, lda2, V, ldv, work, ldwork)
 
             #w = w * op(T)
-            LinearAlgebra.BLAS.trmm!('R', 'U', trans, 'N', one0, (@view T[1:k,1:k]), (@view work[1:m2, 1:k]))
+            
+            LinearAlgebra.generic_mattrimul!((@view work[1:m2, 1:k]), 'U', 'N', tfun, (@view work[1:m2, 1:k]), (@view T[1:k, 1:k]))
 
             #A1 = A1 - w
             for j in 1:k
-                axpy!(-one0, (@view work[1:m1, j]), (@view A1[1:m1, j]))
+                LinearAlgebra.axpy!(-one0, (@view work[1:m1, j]), (@view A1[1:m1, j]))
             end
 
             #a2 = a2 - w * op(V)

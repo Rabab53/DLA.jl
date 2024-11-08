@@ -85,6 +85,7 @@ function ztsqrt(m, n, ib, A1, lda1, A2, lda2, T, ldt, tau, work)
 
     one0 = oneunit(eltype(A1))
     zero0 = zero(eltype(A1))
+    plus = LinearAlgebra.MulAddMul(one0, one0)
 
     for ii in 1:ib:n
         sb = min(n-ii+1, ib)
@@ -96,21 +97,21 @@ function ztsqrt(m, n, ib, A1, lda1, A2, lda2, T, ldt, tau, work)
             if ii+i <= n
                 # apply H[ii*ib + i] to A[ii*ib + i:m, ii*ib + i + 1 : ii*ib + ib] from left
                 alpha = -conj(tau[ii+i-1])
-
                 (@view work[1:sb-i]) .= (@view A1[ii+i-1, ii+i:ii+sb-1])
                 
                 conj!((@view work[1:sb-i]))
-                LinearAlgebra.BLAS.gemv!('C', one0, (@view A2[1:m, ii+i:ii+sb-1]), (@view A2[1:m, ii+i-1]), one0, (@view work[1:sb-i]))
+                LinearAlgebra.generic_matvecmul!((@view work[1:sb-i]), 'C', (@view A2[1:m, ii+i:ii+sb-1]), (@view A2[1:m, ii+i-1]), plus)
                 conj!((@view work[1:sb-i]))
-                axpy!(alpha, (@view work[1:sb-i]), (@view A1[ii+i-1, ii+i:ii+sb-1]))
+                LinearAlgebra.axpy!(alpha, (@view work[1:sb-i]), (@view A1[ii+i-1, ii+i:ii+sb-1]))
                 conj!((@view work[1:sb-i]))
                 gerc!(alpha, (@view A2[1:m, ii+i-1]), (@view work[1:sb-i]), (@view A2[1:m, ii+i:ii+sb-1]))
             end
 
             # Calculate T
             alpha = -tau[ii+i-1]
-            LinearAlgebra.BLAS.gemv!('C', alpha, (@view A2[1:m, ii:ii+i-2]), (@view A2[1:m, ii+i-1]), zero0, (@view T[1:i-1, ii+i-1]))
-            LinearAlgebra.BLAS.trmv!('U', 'N', 'N', (@view T[1:i-1, ii:ii+i-2]), (@view T[1:i-1, ii+i-1]))
+            LinearAlgebra.generic_matvecmul!((@view T[1:i-1, ii+i-1]), 'C', (@view A2[1:m, ii:ii+i-2]), (@view A2[1:m, ii+i-1]),LinearAlgebra.MulAddMul(alpha, zero0))
+            #LinearAlgebra.BLAS.trmv!('U', 'N', 'N', (@view T[1:i-1, ii:ii+i-2]), (@view T[1:i-1, ii+i-1]))
+            LinearAlgebra.generic_trimatmul!((@view T[1:i-1, ii+i-1]), 'U', 'N', identity, (@view T[1:i-1, ii:ii+i-2]), (@view T[1:i-1, ii+i-1]))
             T[i, ii+i-1] = tau[ii+i-1]
         end
 
