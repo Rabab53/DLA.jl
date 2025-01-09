@@ -118,6 +118,10 @@ function performant_rectrsm!(A::AbstractMatrix{T}, n::Int, B::AbstractMatrix{T},
 
     backend = get_backend(A)
 
+    one = oneunit(eltype(A))
+    plus = LinearAlgebra.MulAddMul(one, one)
+    minus = LinearAlgebra.MulAddMul(one*(-1),one)
+
     if n <= threshold
         n, m = size(B)
 
@@ -141,8 +145,10 @@ function performant_rectrsm!(A::AbstractMatrix{T}, n::Int, B::AbstractMatrix{T},
 
         performant_rectrsm!(A11, mid, B1, side, k; uplo=uplo, transpose=transpose, threshold=threshold)
 
-        N, R, M = size(B2, 1), size(A21, 2), size(B2, 2)
-        coalesced_matmul_kernel!(backend, (TILE_DIM, TILE_DIM))(B2, A21, B1, N, R, M, ndrange = (ceil(Int, N / TILE_DIM) * TILE_DIM, ceil(Int, M / TILE_DIM) * TILE_DIM))
+        #N, R, M = size(B2, 1), size(A21, 2), size(B2, 2)
+        #coalesced_matmul_kernel!(backend, (TILE_DIM, TILE_DIM))(B2, A21, B1, N, R, M, ndrange = (ceil(Int, N / TILE_DIM) * TILE_DIM, ceil(Int, M / TILE_DIM) * TILE_DIM))
+        #CUDA.CUBLAS.gemm!('N', 'N', -1, A21, B1, 1, B2)
+        LinearAlgebra.generic_matmatmul!(B2, 'N', 'N', A21, B1, minus)
 
         performant_rectrsm!(A22, n - mid, B2, side, k; uplo=uplo, transpose=transpose, threshold=threshold)
     else
@@ -158,8 +164,10 @@ function performant_rectrsm!(A::AbstractMatrix{T}, n::Int, B::AbstractMatrix{T},
 
         performant_rectrsm!(A11, M1, B1, side, k; uplo=uplo, transpose=transpose, threshold=threshold)
 
-        N, R, M = size(B2, 1), size(A21, 2), size(B2, 2)
-        coalesced_matmul_kernel!(backend, (TILE_DIM, TILE_DIM))(B2, A21, B1, N, R, M, ndrange = (ceil(Int, N / TILE_DIM) * TILE_DIM, ceil(Int, M / TILE_DIM) * TILE_DIM))
+        #N, R, M = size(B2, 1), size(A21, 2), size(B2, 2)
+        #coalesced_matmul_kernel!(backend, (TILE_DIM, TILE_DIM))(B2, A21, B1, N, R, M, ndrange = (ceil(Int, N / TILE_DIM) * TILE_DIM, ceil(Int, M / TILE_DIM) * TILE_DIM))
+        #CUDA.CUBLAS.gemm!('N', 'N', -1, A21, B1, 1, B2)
+        LinearAlgebra.generic_matmatmul!(B2, 'N', 'N', A21, B1, minus)
 
         performant_rectrsm!(A22, M2, B2, side, k; uplo=uplo, transpose=transpose, threshold=threshold)
     end
