@@ -52,4 +52,5 @@ end
 # Write your package code here.
 include("DLAMatrix.jl")
 include("lu.jl")
+include("recTRMM.jl")
 end
