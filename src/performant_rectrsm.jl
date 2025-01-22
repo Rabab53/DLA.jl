@@ -196,21 +196,25 @@ function performant_rectrsm!(A::AbstractMatrix{T}, n, B::AbstractMatrix{T}, side
     
     backend = get_backend(A)
 
+
     # Base case: Use kernel functions for small matrices
     one = oneunit(eltype(A))
     plus = LinearAlgebra.MulAddMul(one, one)
     minus = LinearAlgebra.MulAddMul(one*(-1),one)
     if n <= threshold
+        if transpose == 'N'
+            A = Transpose(A)
+        end
         n, m = size(B)
     
-        if side == 'L' && uplo == 'L' && transpose == 'N'
-            lower_left_kernel(backend, (n,))(Transpose(A), B, n, ndrange=(n, m))
-        elseif side == 'L' && uplo == 'U' && transpose == 'N'
-            upper_left_kernel(backend, (n,))(Transpose(A), B, n, ndrange=(n, m))
-        elseif side == 'R' && uplo == 'L' && transpose == 'N'
-            right_lower_kernel(backend, (m,))(Transpose(A), B, m, ndrange=(m, n))
-        elseif side == 'R' && uplo == 'U' && transpose == 'N'
-            right_upper_kernel(backend, (m,))(Transpose(A), B, m, ndrange=(m, n))
+        if side == 'L' && uplo == 'L' #&& transpose == 'N'
+            lower_left_kernel(backend, (n,))(A, B, n, ndrange=(n, m))
+        elseif side == 'L' && uplo == 'U'# && transpose == 'N'
+            upper_left_kernel(backend, (n,))(A, B, n, ndrange=(n, m))
+        elseif side == 'R' && uplo == 'L' #&& transpose == 'N'
+            right_lower_kernel(backend, (m,))(A, B, m, ndrange=(m, n))
+        elseif side == 'R' && uplo == 'U' #&& transpose == 'N'
+            right_upper_kernel(backend, (m,))(A, B, m, ndrange=(m, n))
         else
             error("Unsupported combination of side, uplo, and transposed parameters.")
         end
@@ -218,7 +222,7 @@ function performant_rectrsm!(A::AbstractMatrix{T}, n, B::AbstractMatrix{T}, side
     end
     
     # Recursive case: Split the problem into smaller subproblems
-    if side == 'L' && uplo == 'L' && transpose == 'N'
+    if side == 'L' && uplo == 'L'# && transpose == 'N'
         if isinteger(log2(n))
             mid = div(n, 2)
             A11 = view(A, 1:mid, 1:mid)
@@ -295,7 +299,7 @@ function performant_rectrsm!(A::AbstractMatrix{T}, n, B::AbstractMatrix{T}, side
         #     # Solve the second part
         #     performant_rectrsm!(A22, M2, B2, side; uplo=uplo, transpose=transpose, threshold=threshold)
         # end
-    elseif side == 'L' && uplo == 'U' && transpose == 'N'
+    elseif side == 'L' && uplo == 'U' #&& transpose == 'N'
         if isinteger(log2(n))
             mid = div(n, 2)
             A11 = view(A, 1:mid, 1:mid)
@@ -335,7 +339,7 @@ function performant_rectrsm!(A::AbstractMatrix{T}, n, B::AbstractMatrix{T}, side
             # Solve the second part
             performant_rectrsm!(A22, M2, B2, side; uplo=uplo, transpose=transpose, threshold=threshold)
         end
-    elseif side == 'R' && uplo == 'L' && transpose == 'N'
+    elseif side == 'R' && uplo == 'L' #&& transpose == 'N'
         if isinteger(log2(n))
             mid = div(n, 2)
             A11 = view(A, 1:mid, 1:mid)
@@ -375,7 +379,7 @@ function performant_rectrsm!(A::AbstractMatrix{T}, n, B::AbstractMatrix{T}, side
             # Solve the first part
             performant_rectrsm!(A11, M1, B1, side; uplo=uplo, transpose=transpose, threshold=threshold)
         end
-    elseif side == 'R' && uplo == 'U' && transpose == 'N'
+    elseif side == 'R' && uplo == 'U'# && transpose == 'N'
         if isinteger(log2(n))
             mid = div(n, 2)
             A11 = view(A, 1:mid, 1:mid)
@@ -420,38 +424,3 @@ function performant_rectrsm!(A::AbstractMatrix{T}, n, B::AbstractMatrix{T}, side
 end
 
 
-
-# Brief Pseudocode
-# Assumptions: A is lower triangular, solving Ax = B; A is nxn, B is nxm;
-# We are solving for x and mutating B to be x
-
-# Recursion:
-# We are performing a recursion with a threshold in which we use the base case.
-
-# If n is less than or equal to the threshold:
-#     Call the base case kernel function to solve the small matrix problem.
-
-# Split the matrix A into 4 equal-sized submatrices:
-#     A11: Top left (lower triangular)
-#     A22: Bottom right (lower triangular)
-#     A21: Bottom left (full matrix)
-#     A12: Top right (empty)
-
-# Split matrix B into two halves:
-#     B1: Top half
-#     B2: Bottom half
-
-# Call recursion on the top left submatrix (A11) with size n/2 x n/2
-
-# Perform GEMM: Update bottom half of B: B2 = B2 - (A21 * B1)
-
-# Call recursion on the bottom right submatrix (A22) with size n/2 x n/2
-
-# Base Case of the Triangular Solve (TRSM):
-
-# For each row in B: Get the diagonal element from A for that row, 
-# then update the corresponding entry in B by dividing it by the diagonal element.
-
-# Then for each row below the current row, update B by subtracting contributions from rows above it.
-
-# Store the updated value back into B.
